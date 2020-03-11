@@ -1,3 +1,5 @@
+package(default_visibility = ["//visibility:public"])
+
 load("//tensorflow/compiler/mlir:glob_lit_test.bzl", "glob_lit_tests")
 load("//tensorflow:tensorflow.bzl", "tf_native_cc_binary")
 

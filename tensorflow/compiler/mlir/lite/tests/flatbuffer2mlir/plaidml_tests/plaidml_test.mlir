@@ -1,0 +1,1 @@
+// RUN: flatbuffer_translate --tflite-flatbuffer-to-mlir /Users/dgkutnic/tensorflow/tfl_plaidml_backend/tensorflow/compiler/mlir/lite/tests/flatbuffer2mlir/plaidml_tests/mobilenet_v2_1.0_224_quant.tflite -o - | FileCheck --dump-input-on-failure %s

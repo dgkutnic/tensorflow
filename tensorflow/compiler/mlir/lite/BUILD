@@ -597,10 +597,73 @@ cc_library(
     alwayslink = 1,
 )
 
+cc_library(
+    name = "edsl_translate_lib",
+    srcs = [
+        "flatbuffer_import.cc",
+        "edsl_translate.cc",
+        "utils/convert_type.cc",
+    ],
+    hdrs = [
+        "flatbuffer_import.h",
+        "flatbuffer_translate.h",
+        "edsl_translate.h",
+        "flatbuffer_translate_flags.h",
+        "utils/convert_type.h",
+    ],
+    deps = [
+        ":flatbuffer_tflite_operator_lib",
+        ":stateful_ops_utils",
+        ":tensorflow_lite",
+        ":tensorflow_lite_dialect_registration",
+        "//tensorflow/compiler/mlir:op_or_arg_name_mapper",
+        "//tensorflow/compiler/mlir/tensorflow",
+        "//tensorflow/compiler/mlir/tensorflow:convert_tensor",
+        "//tensorflow/compiler/mlir/tensorflow:export_tf_dialect_op",
+        "//tensorflow/compiler/mlir/tensorflow:mangling_util",
+        "//tensorflow/compiler/mlir/tensorflow:mlir_roundtrip_flags",
+        "//tensorflow/compiler/mlir/tensorflow:tensorflow_dialect_registration",
+        "//tensorflow/compiler/mlir/tensorflow:tensorflow_types",
+        "//tensorflow/compiler/xla:statusor",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/lite:framework",
+        "//tensorflow/lite:schema_fbs_version",
+        "//tensorflow/lite:string_util",
+        "//tensorflow/lite/delegates/flex:whitelisted_flex_ops_lib",
+        "//tensorflow/lite/kernels/internal:kernel_utils",
+        "//tensorflow/lite/schema:schema_fbs",
+        "//tensorflow/lite/tools/versioning",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
+        "@flatbuffers",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Translation",
+    ],
+    alwayslink = 1,
+)
+
 tf_cc_binary(
     name = "flatbuffer_translate",
     deps = [
         ":flatbuffer_translate_lib",
+        "@llvm-project//mlir:LoopOpsTransforms",
+        "@llvm-project//mlir:MlirTranslateMain",
+    ],
+)
+
+tf_cc_binary(
+    name = "edsl_translate",
+    deps = [
+        ":edsl_translate_lib",
         "@llvm-project//mlir:LoopOpsTransforms",
         "@llvm-project//mlir:MlirTranslateMain",
     ],
