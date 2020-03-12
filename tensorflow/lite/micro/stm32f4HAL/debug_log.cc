@@ -1,4 +1,4 @@
-/* Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-%include "std_string.i"
+#include "tensorflow/lite/micro/debug_log.h"
 
+#include <stm32f4xx_hal.h>
+#include <stm32f4xx_hal_uart.h>
 
-%{
-#define SWIG_FILE_WITH_INIT
-#include "tensorflow/lite/model.h"
-#include "tensorflow/lite/python/optimize/sparsification_wrapper.h"
-%}
+#include <cstdio>
 
+extern UART_HandleTypeDef DEBUG_UART_HANDLE;
 
-%include "tensorflow/lite/python/optimize/sparsification_wrapper.h"
+#ifdef __GNUC__
+int __io_putchar(int ch) {
+  HAL_UART_Transmit(&DEBUG_UART_HANDLE, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+
+  return ch;
+}
+#else
+int fputc(int ch, FILE *f) {
+  HAL_UART_Transmit(&DEBUG_UART_HANDLE, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+
+  return ch;
+}
+#endif /* __GNUC__ */
+
+extern "C" void DebugLog(const char *s) { fprintf(stderr, "%s", s); }

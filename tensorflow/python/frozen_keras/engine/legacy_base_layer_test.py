@@ -35,10 +35,10 @@ from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_spec
 from tensorflow.python.framework import test_util
 from tensorflow.python.frozen_keras.engine import legacy_base_layer
+from tensorflow.python.frozen_keras.utils import tf_utils
 from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.keras import testing_utils
 from tensorflow.python.keras.optimizer_v2 import rmsprop
-from tensorflow.python.keras.utils import tf_utils
 from tensorflow.python.layers import core as legacy_core
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
@@ -78,9 +78,6 @@ class BaseLayerTest(keras_parameterized.TestCase):
 
   @keras_parameterized.run_with_all_model_types
   def test_dynamic_layer(self):
-    if testing_utils.get_model_type() == 'sequential':
-      # TODO(scottzhu): Reenable this once sequential is moved to frozen_keras.
-      self.skipTest('Sequential model will check layer instance type and fail.')
     model = testing_utils.get_model_from_layers([DynamicLayer(dynamic=True)],
                                                 input_shape=(3,))
     self.assertEqual(model.dynamic, True)
@@ -90,9 +87,6 @@ class BaseLayerTest(keras_parameterized.TestCase):
 
   @keras_parameterized.run_with_all_model_types
   def test_dynamic_layer_error(self):
-    if testing_utils.get_model_type() == 'sequential':
-      # TODO(scottzhu): Reenable this once sequential is moved to frozen_keras.
-      self.skipTest('Sequential model will check layer instance type and fail.')
     with self.assertRaisesRegexp(TypeError,
                                  'attempting to use Python control flow'):
       model = testing_utils.get_model_from_layers([DynamicLayer()],
@@ -102,9 +96,6 @@ class BaseLayerTest(keras_parameterized.TestCase):
 
   @keras_parameterized.run_with_all_model_types
   def test_dynamic_layer_error_running_in_graph_mode(self):
-    if testing_utils.get_model_type() == 'sequential':
-      # TODO(scottzhu): Reenable this once sequential is moved to frozen_keras.
-      self.skipTest('Sequential model will check layer instance type and fail.')
     with ops.get_default_graph().as_default():
       model = testing_utils.get_model_from_layers([DynamicLayer(dynamic=True)],
                                                   input_shape=(3,))
