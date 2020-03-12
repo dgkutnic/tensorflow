@@ -20,6 +20,7 @@ limitations under the License.
 #include <stdlib.h>
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -94,10 +95,12 @@ using mlir::ModuleOp;
 using mlir::NoneType;
 using mlir::Operation;
 using mlir::Region;
+using mlir::IntegerAttr;
 using mlir::StringAttr;
 using mlir::TensorType;
 using mlir::TranslateFromMLIRRegistration;
 using mlir::Type;
+using mlir::TypeAttr;
 using mlir::UnknownLoc;
 using mlir::Value;
 using tensorflow::OpOrArgLocNameMapper;
@@ -118,44 +121,6 @@ namespace error = tensorflow::error;
 namespace tfl = mlir::TFL;
 
 using llvm::cl::opt;
-
-// These command line flags enable control of the translation implementation.
-bool emit_builtin_tflite_ops;
-bool emit_custom_ops;
-bool emit_select_tf_ops;
-bool lower_tensor_list_ops;
-bool strip_debug_info;
-
-// NOLINTNEXTLINE
-static opt<bool, true> emit_builtin_tflite_ops_flag(
-    "emit-builtin-tflite-ops",
-    llvm::cl::desc(
-        "Emit TFLite built in operations in the generated TFLite model"),
-    llvm::cl::location(emit_builtin_tflite_ops), llvm::cl::init(true));
-
-// NOLINTNEXTLINE
-static opt<bool, true> emit_select_tf_ops_flag(
-    "emit-select-tf-ops",
-    llvm::cl::desc(
-        "Emit Select TF operations (Flex ops) in the generated TFLite model"),
-    llvm::cl::location(emit_select_tf_ops), llvm::cl::init(false));
-
-// NOLINTNEXTLINE
-static opt<bool, true> emit_custom_ops_flag(
-    "emit-custom-ops",
-    llvm::cl::desc("Emit Custom operations in the generated TFLite model"),
-    llvm::cl::location(emit_custom_ops), llvm::cl::init(false));
-
-// NOLINTNEXTLINE
-static opt<bool, true> lower_tensor_list_ops_flag(
-    "lower-tensor-list-ops",
-    llvm::cl::desc("Lower the TensorList ops within the TFLite dialect"),
-    llvm::cl::location(lower_tensor_list_ops), llvm::cl::init(false));
-
-// NOLINTNEXTLINE
-static opt<bool, true> strip_debug_info_flag(
-    "strip-debug-info", llvm::cl::desc("Strip debug info during export"),
-    llvm::cl::location(strip_debug_info), llvm::cl::init(false));
 
 ABSL_CONST_INIT const absl::string_view kFlexOpNamePrefix = "Flex";
 
@@ -372,29 +337,39 @@ class PlaidML_Translator {
   // the serialized output. Returns llvm::None on unsupported, invalid inputs or
   // internal error.
   static Optional<std::string> Translate(
-      ModuleOp module, bool emit_builtin_tflite_ops, bool emit_select_tf_ops,
-      bool emit_custom_ops, OpOrArgNameMapper* op_or_arg_name_mapper);
+      ModuleOp module, OpOrArgNameMapper* op_or_arg_name_mapper);
+
+  // add tensor_index_map here
+  llvm::DenseMap<Value, int> tensor_index_map;
+
+  const std::vector<char> translator_dictionary = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
+
+  const std::vector<std::string> known_I32Attrs = {"depth_multiplier", "dilation_h_factor", "dilation_w_factor", "filter_height", "filter_width", "stride_h", "stride_w"};
+
+  const std::vector<std::string> known_StrEnumAttrs = {"fused_activation_function", "padding"};
+
+  const std::vector<std::string> known_TypeAttrs = {"type", "qtype"};
+
+  std::string legalize_indices(int32_t index) {
+    std::string legalized_index = "";
+    int32_t ic = index;
+    while (ic > 0) {
+      int32_t i = ic % 10;
+      legalized_index += translator_dictionary[i];
+      ic /= 10;
+    }
+    return legalized_index;
+  }
 
  private:
   enum class OpType : char { kTfliteBuiltin, kSelectTf, kCustomOp };
-  explicit PlaidML_Translator(ModuleOp module, bool emit_builtin_tflite_ops,
-                      bool emit_select_tf_ops, bool emit_custom_ops,
-                      OpOrArgNameMapper* op_or_arg_name_mapper)
+  explicit PlaidML_Translator(ModuleOp module, OpOrArgNameMapper* op_or_arg_name_mapper)
       : module_(module),
         name_mapper_(*op_or_arg_name_mapper),
         builder_(kInitialBufferSize) {
     // The first buffer must be empty according to the schema definition.
     empty_buffer_ = tflite::CreateBuffer(builder_);
     buffers_.push_back(empty_buffer_);
-    if (emit_builtin_tflite_ops) {
-      enabled_op_types_.emplace(OpType::kTfliteBuiltin);
-    }
-    if (emit_select_tf_ops) {
-      enabled_op_types_.emplace(OpType::kSelectTf);
-    }
-    if (emit_custom_ops) {
-      enabled_op_types_.emplace(OpType::kCustomOp);
-    }
     tf_dialect_ = module.getContext()->getRegisteredDialect("tf");
     tfl_dialect_ = module.getContext()->getRegisteredDialect("tfl");
   }
@@ -417,6 +392,11 @@ class PlaidML_Translator {
   BufferOffset<tflite::Operator> BuildIfOperator(
       mlir::TF::IfOp op, const std::vector<int32_t>& operands,
       const std::vector<int32_t>& results);
+
+  std::string BuildAddOperator(
+      mlir::TFL::AddOp op, const std::vector<int32_t>& operands,
+      const std::vector<int32_t>& results);
+
   BufferOffset<tflite::Operator> BuildWhileOperator(
       mlir::TF::WhileOp op, const std::vector<int32_t>& operands,
       const std::vector<int32_t>& results);
@@ -708,6 +688,19 @@ BufferOffset<tflite::Operator> PlaidML_Translator::BuildIfOperator(
                                 builtin_options);
 }
 
+std::string PlaidML_Translator::BuildAddOperator(
+    mlir::TFL::AddOp op, const std::vector<int32_t>& operands,
+    const std::vector<int32_t>& results) {
+    std::ostringstream operands_str;
+    if (!operands.empty())
+    {
+      std::copy(operands.begin(), operands.end()-1,
+          std::ostream_iterator<int>(operands_str, ","));
+      operands_str << operands.back() << std::endl;
+    }
+    return operands_str.str();
+}
+
 BufferOffset<tflite::Operator> PlaidML_Translator::BuildWhileOperator(
     mlir::TF::WhileOp op, const std::vector<int32_t>& operands,
     const std::vector<int32_t>& results) {
@@ -946,11 +939,13 @@ Optional<BufferOffset<tflite::Operator>> PlaidML_Translator::BuildOperator(
   if (dialect == tfl_dialect_) {
     // Only if built-in TFLite op emission is enabled, would legalization have
     // converted any TF->TFL.
+    /*
     if (!enabled_op_types_.contains(OpType::kTfliteBuiltin)) {
       return inst->emitOpError(
                  "is a TFLite builtin op but builtin emission is not enabled"),
              llvm::None;
     }
+    */
 
     auto builtin_code = GetBuiltinOpCode(inst);
     if (!builtin_code) {
@@ -1127,7 +1122,6 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
     InitializeNamesFromAttribute(fn, &has_input_attr);
   }
   std::vector<BufferOffset<tflite::Tensor>> tensors;
-  llvm::DenseMap<Value, int> tensor_index_map;
 
   // Builds tensor and buffer for argument or operation result. Returns false
   // on failure.
@@ -1137,7 +1131,7 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
       return true;
     }
 
-    tensor_index_map.insert({value, tensors.size()});
+    PlaidML_Translator::tensor_index_map.insert({value, tensors.size()});
     auto tensor_or = BuildTensor(value, name, buffers_.size());
     if (!tensor_or) return false;
     tensors.push_back(*tensor_or);
@@ -1160,7 +1154,7 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
   auto& bb = region->front();
 
   // Main function's arguments are first passed to `input` op so they don't
-  // have associated tensor and buffer. Build EDSL tensor and buffer for
+  // have associated tensor and buffer. Build FlatBuffer tensor and buffer for
   // other functions.
   for (unsigned i = 0, e = bb.getNumArguments(); i < e; ++i) {
     mlir::BlockArgument arg = bb.getArgument(i);
@@ -1189,12 +1183,12 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
       if (operand.getType().isa<NoneType>())
         operands.push_back(kTfLiteOptionalTensor);
       else
-        operands.push_back(tensor_index_map.lookup(operand));
+        operands.push_back(PlaidML_Translator::tensor_index_map.lookup(operand));
     }
     std::vector<int32_t> results;
     results.reserve(inst.getNumOperands());
     for (auto result : inst.getResults()) {
-      results.push_back(tensor_index_map.lookup(result));
+      results.push_back(PlaidML_Translator::tensor_index_map.lookup(result));
     }
 
     if (auto tfl_operator = BuildOperator(&inst, operands, results))
@@ -1208,10 +1202,10 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
   // Get input and output tensor indices for the subgraph.
   std::vector<int32_t> inputs, outputs;
   for (auto arg : bb.getArguments()) {
-    inputs.push_back(tensor_index_map[arg]);
+    inputs.push_back(PlaidML_Translator::tensor_index_map[arg]);
   }
   for (auto result : bb.getTerminator()->getOperands()) {
-    outputs.push_back(tensor_index_map[result]);
+    outputs.push_back(PlaidML_Translator::tensor_index_map[result]);
   }
 
   return tflite::CreateSubGraph(
@@ -1281,12 +1275,10 @@ bool UpdateEntryFunction(ModuleOp module) {
 }
 
 Optional<std::string> PlaidML_Translator::Translate(
-    ModuleOp module, bool emit_builtin_tflite_ops, bool emit_select_tf_ops,
-    bool emit_custom_ops, OpOrArgNameMapper* op_or_arg_name_mapper) {
+    ModuleOp module, OpOrArgNameMapper* op_or_arg_name_mapper) {
   if (!UpdateEntryFunction(module)) return llvm::None;
   if (!IsValidTFLiteMlirModule(module)) return llvm::None;
-  PlaidML_Translator translator(module, emit_builtin_tflite_ops, emit_select_tf_ops,
-                        emit_custom_ops, op_or_arg_name_mapper);
+  PlaidML_Translator translator(module, op_or_arg_name_mapper);
   return translator.TranslateInternal();
 }
 
@@ -1297,53 +1289,188 @@ Optional<std::string> PlaidML_Translator::TranslateInternal() {
   int subgraph_idx = 0;
   FuncOp main_fn = module_.lookupSymbol<FuncOp>("main");
 
+  subgraph_index_map_[main_fn.getName().str()] = subgraph_idx++;
+  named_regions.emplace_back("main", &main_fn.getBody());
+  // Walk over the module collection ops with functions and while ops.
+  module_.walk([&](FuncOp fn) {
+    if (fn != main_fn) {
+      subgraph_index_map_[fn.getName().str()] = subgraph_idx++;
+      named_regions.emplace_back(fn.getName().str(), &fn.getBody());
+    }
+  });
+
+  // Build subgraph for each of the named regions.
+  std::vector<BufferOffset<tflite::SubGraph>> subgraphs;
+  subgraphs.reserve(named_regions.size());
+  int first_failed_func = -1;
+  for (auto it : llvm::enumerate(named_regions)) {
+    auto subgraph_or = BuildSubGraph(it.value().first, it.value().second);
+    if (!subgraph_or) {
+      if (first_failed_func == -1)
+        // Record the index of the first region that cannot be converted.
+        // Keep looping through all subgraphs in the module to make sure that
+        // we collect the list of missing ops from the entire module.
+        first_failed_func = it.index();
+    } else {
+      subgraphs.push_back(*subgraph_or);
+    }
+  }
+
   std::string stuff;
 
   main_fn.walk([&](Operation *op) {
     stuff += op->getName().getStringRef().str();
     stuff += "\n";
+    auto num_operands = op->getNumOperands();
+    stuff += "number of operands: ";
+    stuff += std::to_string(num_operands);
+    stuff += "\n";
+    std::vector<int32_t> operands;
+    operands.reserve(num_operands);
+    for (auto operand : op->getOperands()) {
+      if (operand.getType().isa<NoneType>())
+        operands.push_back(kTfLiteOptionalTensor);
+      else
+        operands.push_back(PlaidML_Translator::tensor_index_map.lookup(operand));
+    }
+    for (auto i = 0; i < num_operands; i++) {
+      auto this_operand = operands[i];
+      stuff += "operand #" + std::to_string(i) + " is " + std::to_string(this_operand);
+      stuff += "\n";
+      stuff += "legalized operand # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_operand);
+      stuff += "\n";
+    }
+    auto attributes = op->getAttrs();
+    for (auto attr : attributes) {
+        auto attr_name = attr.first.str();
+        stuff += "attribute " + attr_name + " is ";
+        if (std::find(PlaidML_Translator::known_I32Attrs.begin(), PlaidML_Translator::known_I32Attrs.end(), attr_name) != PlaidML_Translator::known_I32Attrs.end()) {
+          stuff += std::to_string(attr.second.cast<IntegerAttr>().getInt());
+        } else if (std::find(PlaidML_Translator::known_TypeAttrs.begin(), PlaidML_Translator::known_TypeAttrs.end(), attr_name) != PlaidML_Translator::known_TypeAttrs.end()) {
+          auto type = attr.second.cast<TypeAttr>().getValue();
+          switch (type.getKind()) {
+            case mlir::StandardTypes::RankedTensor:
+              stuff += "Tensor";
+              break;
+            case mlir::StandardTypes::F32:
+              stuff += "FLOAT32";
+              break;
+            case mlir::StandardTypes::F16:
+              stuff += "FLOAT16";
+              break;
+            case mlir::TF::TensorFlowTypes::STRING:
+              stuff += "STRING";
+              break;
+            case mlir::TF::TensorFlowTypes::QUINT8:
+              stuff += "UINT8";
+              break;
+            case mlir::StandardTypes::Complex: {
+              stuff += "unsupported type";
+              break;
+            }
+            case mlir::StandardTypes::Integer: {
+              const auto& itype = type.cast<mlir::IntegerType>();
+              switch (itype.getWidth()) {
+                case 1:
+                  stuff += "BOOL";
+                  break;
+                case 8:
+                  if (itype.isUnsigned()) {
+                    stuff += "UINT8";
+                    break;
+                  } else {
+                    stuff += "INT8";
+                    break;
+                  }
+                case 16:
+                  stuff += "INT16";
+                  break;
+                case 32:
+                  stuff += "INT32";
+                  break;
+                case 64:
+                  stuff += "INT64";
+                  break;
+              }
+            }
+            case mlir::quant::QuantizationTypes::UniformQuantized: {
+              stuff += "UNIFORM_QUANTIZED";
+            }
+            case mlir::quant::QuantizationTypes::UniformQuantizedPerAxis: {
+              stuff += "UNIFORM_QUANTIZED";
+            }
+            case mlir::TF::TensorFlowTypes::RESOURCE: {
+              stuff += "INT32";
+            }
+            default:
+              stuff += std::to_string(type.getKind());
+          }
+        } else if (std::find(PlaidML_Translator::known_StrEnumAttrs.begin(), PlaidML_Translator::known_StrEnumAttrs.end(), attr_name) != PlaidML_Translator::known_StrEnumAttrs.end()) {
+          stuff += attr.second.cast<StringAttr>().getValue().str();
+        } else if (attr_name == "value") {
+          // This is the only case where we have an ElementsAttr
+          auto el_attr = attr.second.cast<ElementsAttr>();
+          auto el_attr_type = el_attr.getType();
+          auto el_attr_shape = el_attr_type.getShape();
+          stuff += "(";
+          for (int i = 0; i < el_attr_type.getRank(); i++) {
+            stuff += std::to_string(el_attr_shape[i]) + ",";
+          }
+          stuff += ")";
+        }
+        stuff += "\n";
+    }
+    auto num_results = op->getNumResults();
+    stuff += "number of results: ";
+    stuff += std::to_string(num_results);
+    stuff += "\n";
+    std::vector<int32_t> results;
+    operands.reserve(num_results);
+    for (auto result : op->getResults()) {
+      if (result.getType().isa<NoneType>())
+        results.push_back(kTfLiteOptionalTensor);
+      else
+        results.push_back(PlaidML_Translator::tensor_index_map.lookup(result));
+    }
+    for (auto i = 0; i < num_results; i++) {
+      auto this_result = results[i];
+      stuff += "result #" + std::to_string(i) + " is " + std::to_string(this_result);
+      stuff += "\n";
+      stuff += "legalized result # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_result);
+      stuff += "\n";
+    }
   });
 
-  return stuff;
+  return stuff; 
+
 }
 
 }  // namespace
 
 bool tflite::MlirToEDSLTranslateFunction(
     ModuleOp module, std::string* serialized_flatbuffer,
-    bool emit_builtin_tflite_ops, bool emit_select_tf_ops, bool emit_custom_ops,
     OpOrArgNameMapper* op_or_arg_name_mapper) {
   auto maybe_translated =
-      PlaidML_Translator::Translate(module, emit_builtin_tflite_ops, emit_select_tf_ops,
-                            emit_custom_ops, op_or_arg_name_mapper);
+      PlaidML_Translator::Translate(module, op_or_arg_name_mapper);
   if (!maybe_translated) return true;
   *serialized_flatbuffer = std::move(*maybe_translated);
   return false;
 }
 
 bool tflite::MlirToEDSLTranslateFunction(
-    ModuleOp module, std::string* serialized_flatbuffer,
-    bool emit_builtin_tflite_ops, bool emit_select_tf_ops,
-    bool emit_custom_ops) {
+    ModuleOp module, std::string* serialized_flatbuffer) {
   OpOrArgLocNameMapper op_or_arg_name_mapper;
   return MlirToEDSLTranslateFunction(
-      module, serialized_flatbuffer, emit_builtin_tflite_ops,
-      emit_select_tf_ops, emit_custom_ops, &op_or_arg_name_mapper);
+      module, serialized_flatbuffer, &op_or_arg_name_mapper);
 }
 
 static mlir::LogicalResult MlirToEDSLFileTranslateFunction(
     ModuleOp module, llvm::raw_ostream& output) {
   std::string serialized_flatbuffer;
   std::unique_ptr<OpOrArgNameMapper> op_or_arg_name_mapper;
-  if (strip_debug_info) {
-    op_or_arg_name_mapper =
-        std::make_unique<tensorflow::OpOrArgStripNameMapper>();
-  } else {
-    op_or_arg_name_mapper = std::make_unique<OpOrArgLocNameMapper>();
-  }
+  op_or_arg_name_mapper = std::make_unique<OpOrArgLocNameMapper>();
   if (tflite::MlirToEDSLTranslateFunction(
-          module, &serialized_flatbuffer, emit_builtin_tflite_ops,
-          emit_select_tf_ops, emit_custom_ops, op_or_arg_name_mapper.get()))
+          module, &serialized_flatbuffer, op_or_arg_name_mapper.get()))
     return mlir::failure();
 
   output << serialized_flatbuffer;

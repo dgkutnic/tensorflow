@@ -28,15 +28,11 @@ namespace tflite {
 // convert location of the op to name in flatbuffer. Returns true if translation
 // fails, otherwise returns false.
 bool MlirToEDSLTranslateFunction(mlir::ModuleOp module,
-                                       std::string* serialized_flatbuffer,
-                                       bool emit_builtin_tflite_ops,
-                                       bool emit_select_tf_ops,
-                                       bool emit_custom_ops);
+                                       std::string* serialized_flatbuffer);
 
 // Same as the above but with a custom op name mapper.
 bool MlirToEDSLTranslateFunction(
     mlir::ModuleOp module, std::string* serialized_flatbuffer,
-    bool emit_builtin_tflite_ops, bool emit_select_tf_ops, bool emit_custom_ops,
     tensorflow::OpOrArgNameMapper* op_or_arg_name_mapper);
 }  // namespace tflite
 
