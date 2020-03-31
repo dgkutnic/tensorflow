@@ -342,7 +342,7 @@ class PlaidML_Translator {
   // add tensor_index_map here
   llvm::DenseMap<Value, int> tensor_index_map;
 
-  const std::vector<char> translator_dictionary = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
+  const std::vector<char> translator_dictionary = {'A', 'B', 'C', 'D', 'M', 'N', 'W', 'X', 'Y', 'Z'};
 
   const std::vector<std::string> known_I32Attrs = {"depth_multiplier", "dilation_h_factor", "dilation_w_factor", "filter_height", "filter_width", "stride_h", "stride_w"};
 
@@ -353,11 +353,11 @@ class PlaidML_Translator {
   std::string legalize_indices(int32_t index) {
     std::string legalized_index = "";
     int32_t ic = index;
-    while (ic > 0) {
+    do {
       int32_t i = ic % 10;
       legalized_index += translator_dictionary[i];
       ic /= 10;
-    }
+    } while (ic > 0);
     return legalized_index;
   }
 
@@ -380,6 +380,11 @@ class PlaidML_Translator {
   // TFLite constant operation. Otherwise, returns an empty buffer. Emits error
   // and returns llvm::None on failure.
   Optional<BufferOffset<tflite::Buffer>> BuildBuffer(Operation* inst);
+
+  // Build TFLite tensor from the given type. This function is for tfl.lstm
+  // intermediates, which should have UniformQuantizedType.
+  Optional<BufferOffset<tflite::Tensor>> BuildTensorFromType(
+      mlir::Type type, const std::string& name);
 
   // Builds TFLite tensor from the given value. `buffer_idx` is index of the
   // corresponding buffer. Emits error and returns llvm::None on failure.
@@ -451,7 +456,8 @@ class PlaidML_Translator {
   // tensor indices. Emits an error and returns llvm::None on failure.
   Optional<BufferOffset<tflite::Operator>> BuildOperator(
       Operation* inst, const std::vector<int32_t>& operands,
-      const std::vector<int32_t>& results);
+      const std::vector<int32_t>& results,
+      const std::vector<int32_t>& intermediates);
 
   // Build a subgraph with a given name out of the region either corresponding
   // to a function's body or while op.
@@ -477,6 +483,10 @@ class PlaidML_Translator {
 
   // Returns a unique name for `val`.
   std::string UniqueName(mlir::Value val);
+
+  std::string getTypeStr(Type t);
+
+  std::string getConstDecl(Operation* op);
 
   ModuleOp module_;
 
@@ -561,6 +571,34 @@ Optional<BufferOffset<tflite::Buffer>> PlaidML_Translator::BuildBuffer(
   auto buffer_data = builder_.CreateVector(
       reinterpret_cast<const uint8_t*>(tensor_data.data()), tensor_data.size());
   return tflite::CreateBuffer(builder_, buffer_data);
+}
+
+Optional<BufferOffset<tflite::Tensor>> PlaidML_Translator::BuildTensorFromType(
+    mlir::Type type, const std::string& name) {
+  auto tensor_type = type.cast<TensorType>();
+
+  if (!tensor_type.hasStaticShape()) {
+    return llvm::None;
+  }
+  llvm::ArrayRef<int64_t> shape_ref = tensor_type.getShape();
+  std::vector<int32_t> shape(shape_ref.begin(), shape_ref.end());
+
+  auto element_type = tensor_type.getElementType();
+  tflite::TensorType tflite_element_type =
+      GetTFLiteType(tensor_type.getElementType()).ValueOrDie();
+  BufferOffset<tflite::QuantizationParameters> q_params;
+  auto qtype = element_type.dyn_cast<mlir::quant::UniformQuantizedType>();
+  if (!qtype) {
+    return llvm::None;
+  }
+  q_params = tflite::CreateQuantizationParameters(
+      builder_, /*min=*/0, /*max=*/0,
+      builder_.CreateVector<float>({static_cast<float>(qtype.getScale())}),
+      builder_.CreateVector<int64_t>({qtype.getZeroPoint()}));
+  return tflite::CreateTensor(
+      builder_, builder_.CreateVector(shape), tflite_element_type,
+      /*buffer=*/0, builder_.CreateString(name), q_params,
+      /*is_variable=*/false);
 }
 
 Optional<BufferOffset<tflite::Tensor>> PlaidML_Translator::BuildTensor(
@@ -928,7 +966,8 @@ uint32_t PlaidML_Translator::GetOpcodeIndex(const std::string& op_name,
 
 Optional<BufferOffset<tflite::Operator>> PlaidML_Translator::BuildOperator(
     Operation* inst, const std::vector<int32_t>& operands,
-    const std::vector<int32_t>& results) {
+    const std::vector<int32_t>& results,
+    const std::vector<int32_t>& intermediates) {
   const auto* dialect = inst->getDialect();
   if (!dialect) {
     inst->emitOpError("dialect is not registered");
@@ -983,7 +1022,7 @@ Optional<BufferOffset<tflite::Operator>> PlaidML_Translator::BuildOperator(
     std::string op_name = inst->getName().getStringRef().str();
     uint32_t opcode_index = GetOpcodeIndex(op_name, *builtin_code);
     auto offset = CreateFlatBufferOperator(inst, opcode_index, operands,
-                                           results, &builder_);
+                                           results, intermediates, &builder_);
     if (!offset) {
       inst->emitOpError("is not a supported TFLite op");
     }
@@ -1167,6 +1206,29 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
   bool failed_once = false;
   for (auto& inst : bb) {
     if (inst.isKnownTerminator()) break;
+    std::vector<int32_t> intermediates;
+    // Build intermediate tensors for tfl.lstm and insert these tensors into
+    // flatbuffer.
+    if (llvm::isa<mlir::TFL::LSTMOp>(inst)) {
+      std::vector<std::string> intermediate_names = {
+          "input_to_input_intermediate", "input_to_forget_intermediate",
+          "input_to_cell_intermediate", "input_to_output_intermediate",
+          "effective_hidden_scale_intermediate"};
+      for (const std::string& intermediate : intermediate_names) {
+        auto intermediate_attr = inst.getAttr(intermediate);
+        if (auto attr = intermediate_attr.dyn_cast_or_null<mlir::TypeAttr>()) {
+          Type qtype = attr.getValue();
+          auto tensor_or = BuildTensorFromType(
+              qtype, name_mapper_.GetUniqueName(intermediate).str());
+          if (!tensor_or.hasValue()) {
+            continue;
+          } else {
+            intermediates.push_back(tensors.size());
+            tensors.push_back(tensor_or.getValue());
+          }
+        }
+      }
+    }
 
     for (auto val : inst.getResults()) {
       std::string name = UniqueName(val);
@@ -1191,7 +1253,8 @@ Optional<BufferOffset<tflite::SubGraph>> PlaidML_Translator::BuildSubGraph(
       results.push_back(PlaidML_Translator::tensor_index_map.lookup(result));
     }
 
-    if (auto tfl_operator = BuildOperator(&inst, operands, results))
+    if (auto tfl_operator =
+            BuildOperator(&inst, operands, results, intermediates))
       operators.push_back(*tfl_operator);
     else
       failed_once = true;
@@ -1282,6 +1345,84 @@ Optional<std::string> PlaidML_Translator::Translate(
   return translator.TranslateInternal();
 }
 
+std::string PlaidML_Translator::getTypeStr(Type t) {
+  switch (t.getKind()) {
+    case mlir::StandardTypes::F32:
+      return "Float32";
+    case mlir::StandardTypes::F16:
+      return "Float16";
+    case mlir::TF::TensorFlowTypes::STRING:
+      return "String";
+    case mlir::TF::TensorFlowTypes::QUINT8:
+      return "Unsigned_Int8";
+    case mlir::StandardTypes::Complex: {
+      return "unsupported type";
+    }
+    case mlir::StandardTypes::Integer: {
+      const auto& itype = t.cast<mlir::IntegerType>();
+      switch (itype.getWidth()) {
+        case 1:
+          return "Boolean";
+        case 8:
+          if (itype.isUnsigned()) {
+            return "Unsigned_Int8";
+          } else {
+            return "Int8";
+          }
+        case 16:
+          return "Int16";
+        case 32:
+          return "Int32";
+        case 64:
+          return "Int64";
+      }
+    }
+    case mlir::quant::QuantizationTypes::UniformQuantized: {
+      auto qt = t.dyn_cast<mlir::quant::QuantizedType>();
+      if (qt) {
+        return "Uniform_Quantized " + getTypeStr(qt.getExpressedType()) + " -> " + getTypeStr(qt.getStorageType());
+      }
+      return "UNIFORM_QUANTIZED";
+    }
+    case mlir::quant::QuantizationTypes::UniformQuantizedPerAxis: {
+      auto qt = t.dyn_cast<mlir::quant::QuantizedType>();
+      if (qt) {
+        return "Uniform_Quantized " + getTypeStr(qt.getExpressedType()) + " -> " + getTypeStr(qt.getStorageType());
+      }
+      return "UNIFORM_QUANTIZED"; 
+    }
+    case mlir::TF::TensorFlowTypes::RESOURCE: {
+      return "Int32";
+    }
+    default:
+      return "Float32";
+  }
+}
+
+std::string PlaidML_Translator::getConstDecl(Operation* op) {
+  std::string const_decl = "np.fromstring(\"";
+  auto val_attr = op->getAttr("value").cast<ElementsAttr>();
+  tensorflow::Tensor tensor;
+  auto status = tensorflow::ConvertToTensor(val_attr, &tensor);
+  if (!status.ok()) {
+    return "error converting tensor";
+  }
+  const_decl += tensor.SummarizeValue(val_attr.getNumElements(), true);  
+  const_decl += "\", dtype=int, sep=' ')";
+  if (auto tt = val_attr.getType().dyn_cast<TensorType>()) {
+    std::string shape_str;
+    auto tt_shape = tt.getShape();
+    shape_str += "(";
+    for (int i = 0; i < tt.getRank(); i++) {
+      shape_str += std::to_string(tt_shape[i]) + ",";
+    }
+    shape_str += ")";
+    const_decl += ".reshape(" + shape_str + ")";
+  }
+  const_decl += "\n";
+  return const_decl;\
+}
+
 Optional<std::string> PlaidML_Translator::TranslateInternal() {
   std::vector<std::pair<std::string, Region*>> named_regions;
   named_regions.reserve(std::distance(module_.begin(), module_.end()));
@@ -1316,15 +1457,224 @@ Optional<std::string> PlaidML_Translator::TranslateInternal() {
     }
   }
 
-  std::string stuff;
+  std::string top_level_edsl_code;
+  std::string import_defs = "import plaidml\nimport plaidml.exec as plaidml_exec\nimport plaidml.op as plaidml_op\nfrom plaidml.edsl import *\n\n";
+  import_defs += "import tensorflow as tf\n\n";
+  std::string edsl_const_def = "import numpy as np\ndef edsl_constants():\n";
+  std::string edsl_const_ret = "    return ";
+  std::string edsl_functional_def = "def edsl_program(";
+  std::string functional_edsl_code;
+
+  auto& bb = main_fn.getBlocks().front();
+
+  top_level_edsl_code += "# The following arguments must be passed into edsl_program:\n";
+  std::vector<std::pair<std::string, std::string>> arg_names_and_shapes;
+
+  for (auto arg : bb.getArguments()) {
+    top_level_edsl_code += "# Name: " + PlaidML_Translator::legalize_indices(arg.getArgNumber());
+    edsl_functional_def += PlaidML_Translator::legalize_indices(arg.getArgNumber()) + ", ";
+    auto argtype = arg.getType();
+    if (auto tt = argtype.dyn_cast<TensorType>()) {
+      std::string shape_str;
+      auto tt_shape = tt.getShape();
+      shape_str += "(";
+      for (int i = 0; i < tt.getRank(); i++) {
+        shape_str += std::to_string(tt_shape[i]) + ",";
+      }
+      shape_str += ")";
+      auto el_type = tt.getElementType(); 
+      top_level_edsl_code += "\n#  - Tensor " + getTypeStr(el_type) + "\n#  - Shape: " + shape_str;
+      arg_names_and_shapes.push_back(std::pair<std::string, std::string>(PlaidML_Translator::legalize_indices(arg.getArgNumber()), shape_str));
+    } else {
+      top_level_edsl_code += getTypeStr(argtype);
+    }
+    top_level_edsl_code += "\n";
+  }
+
+  top_level_edsl_code += import_defs;
+
+  std::vector<std::pair<std::string, std::string>> constant_names_and_shapes;
 
   main_fn.walk([&](Operation *op) {
-    stuff += op->getName().getStringRef().str();
-    stuff += "\n";
+    std::string fname = op->getName().getStringRef().str();
+    if (fname == "tfl.pseudo_qconst" || fname == "tfl.pseudo_const") {
+      auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getResult(0)));
+      auto rshape = op->getResult(0).getType().dyn_cast<TensorType>().getShape();
+      std::ostringstream rshape_str;
+      if (!rshape.empty()) {
+        std::copy(rshape.begin(), rshape.end()-1, std::ostream_iterator<int>(rshape_str, ","));
+        rshape_str << rshape.back();
+      }
+      constant_names_and_shapes.push_back(std::pair<std::string, std::string>(rname, rshape_str.str()));
+      auto decl = getConstDecl(op);
+      edsl_const_def += "    " + rname + " = " + decl;
+    } else if (fname == "tfl.conv_2d" || fname == "tfl.depthwise_conv_2d") {
+        std::string rolling_op = "    ";
+        auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getResult(0)));
+        rolling_op += rname + " = plaidml_op.convolution(\n";
+        std::string inputs;
+        std::string filters;
+        std::string strides;
+        std::string dilations;
+	std::string data_dilations = "[1, 1]";
+	std::string filter_shape = "[]";
+        std::string groups = "1";
+        std::string autopad_mode;
+        std::string manual_padding = "[]";
+        std::string input_layout = "'nxc'";
+        std::string filter_layout = "'kcx'";
+        std::string group_layout;
+        std::string winograd_allowed = "False";
+        std::string name = "'" + rname + "'";
+        std::string autogroup_mode;
+        std::string deriv_mode = "'none'";
+        std::string result_shape = "[]";
+        std::vector<std::string> operands;
+        operands.reserve(3);
+        for (auto operand : op->getOperands()) {
+          if (operand.getType().isa<NoneType>())
+            operands.push_back("None");
+          else
+            operands.push_back(PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(operand)));
+        }
+        inputs = operands[0];
+        filters = operands[1];
+        rolling_op += "        inputs = " + inputs + ", \n";
+        rolling_op += "        filters = " + filters + ", \n";
+        int stride_h = op->getAttr("stride_h").cast<IntegerAttr>().getInt();
+        int stride_w = op->getAttr("stride_w").cast<IntegerAttr>().getInt();
+        strides = "[" + std::to_string(stride_h) + ", " + std::to_string(stride_w) + "]";
+        rolling_op += "        strides = " + strides + ", \n";
+        int dilation_h = op->getAttr("dilation_h_factor").cast<IntegerAttr>().getInt();
+        int dilation_w = op->getAttr("dilation_w_factor").cast<IntegerAttr>().getInt();
+        dilations = "[" + std::to_string(dilation_h) + ", " + std::to_string(dilation_w) + "]";
+        rolling_op += "        dilations = " + dilations + ", \n";
+        rolling_op += "        data_dilations = " + data_dilations + ", \n";
+        rolling_op += "        filter_shape = " + filter_shape + ", \n";
+        rolling_op += "        groups = " + groups + ", \n";
+        std::string padding = op->getAttr("padding").cast<StringAttr>().getValue().str();
+        if (padding == "SAME") {
+          autopad_mode = "'same_upper'";
+        } else if (padding == "VALID") {
+          autopad_mode = "'valid'";
+        }
+        rolling_op += "        autopad_mode = " + autopad_mode + ", \n";
+        rolling_op += "        manual_padding = " + manual_padding + ", \n";
+        rolling_op += "        input_layout = " + input_layout + ", \n";
+        rolling_op += "        filter_layout = " + filter_layout + ", \n";
+        if (0) {
+//        if (fname == "tfl.depthwise_conv_2d") {
+          group_layout = "'in_C'";
+          autogroup_mode = "'max'";
+        } else {
+          group_layout = "'none'";
+          autogroup_mode = "'ungrouped'";
+        }
+        rolling_op += "        group_layout = " + group_layout + ", \n";
+        rolling_op += "        winograd_allowed = " + winograd_allowed + ", \n";
+        rolling_op += "        name = " + name + ", \n";
+        rolling_op += "        autogroup_mode = " + autogroup_mode + ", \n";
+        rolling_op += "        deriv_mode = " + deriv_mode + ", \n";
+        rolling_op += "        result_shape = " + result_shape + ", \n";
+        rolling_op += "    )\n";
+        if (operands[2] != "None") {
+          // Perform a bias add
+          std::string bias_add = "    " + rname + " += " + operands[2] + "\n";
+          rolling_op += bias_add;
+        }
+        functional_edsl_code += rolling_op;
+    } else if (fname == "tfl.average_pool_2d") {
+        std::string rolling_op = "    ";
+        auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getResult(0)));
+        rolling_op += rname + " = plaidml_op.pool(\n";
+        std::string x;
+        std::string pool_mode = "'average'";
+        std::string pool_size;
+        std::string strides;
+        std::string autopadding;
+        std::string manual_padding = "[]";
+        std::string data_layout = "'nxc'";
+        std::string use_ceil = "False";
+        std::string include_pad_in_avg = "False";
+        std::vector<std::string> operands;
+        operands.reserve(1);
+        for (auto operand : op->getOperands()) {
+          if (operand.getType().isa<NoneType>())
+            operands.push_back("None");
+          else
+            operands.push_back(PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(operand)));
+        }
+        x = operands[0];
+        rolling_op += "        x = " + x + ", \n";
+        rolling_op += "        pool_mode = " + pool_mode + ", \n";
+        int filter_h = op->getAttr("filter_height").cast<IntegerAttr>().getInt();
+        int filter_w = op->getAttr("filter_width").cast<IntegerAttr>().getInt();
+        pool_size = "[" + std::to_string(filter_h) + ", " + std::to_string(filter_w) + "]";
+        rolling_op += "        pool_size = " + pool_size + ", \n";
+        int stride_h = op->getAttr("stride_h").cast<IntegerAttr>().getInt();
+        int stride_w = op->getAttr("stride_w").cast<IntegerAttr>().getInt();
+        strides = "[" + std::to_string(stride_h) + ", " + std::to_string(stride_w) + "]";
+        rolling_op += "        strides = " + strides + ", \n";
+        std::string padding = op->getAttr("padding").cast<StringAttr>().getValue().str();
+        if (padding == "SAME") {
+          autopadding = "'same_upper'";
+        } else if (padding == "VALID") {
+          autopadding = "'valid'";
+        }
+        rolling_op += "        autopadding = " + autopadding + ", \n";
+        rolling_op += "        manual_padding = " + manual_padding + ", \n";
+        rolling_op += "        data_layout = " + data_layout + ", \n";
+        rolling_op += "        use_ceil = " + use_ceil + ", \n";
+        rolling_op += "        include_pad_in_avg = " + include_pad_in_avg + ", \n";
+        rolling_op += "    )\n";
+        functional_edsl_code += rolling_op;
+    } else if (fname == "tfl.add") {
+        std::string rolling_op = "    ";
+        auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getResult(0)));
+        rolling_op += rname + " = ";
+        std::vector<std::string> operands;
+        operands.reserve(2);
+        for (auto operand : op->getOperands()) {
+          if (operand.getType().isa<NoneType>())
+            operands.push_back("None");
+          else
+            operands.push_back(PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(operand)));
+        }
+        rolling_op += operands[0] + " + " + operands[1] + "\n";
+        functional_edsl_code += rolling_op;
+    } else if (fname == "tfl.reshape") {
+        std::string rolling_op = "    ";
+        auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getResult(0)));
+        auto rshape = op->getResult(0).getType().dyn_cast<TensorType>().getShape();
+        std::ostringstream rshape_str;
+        if (!rshape.empty()) {
+          std::copy(rshape.begin(), rshape.end()-1, std::ostream_iterator<int>(rshape_str, ","));
+          rshape_str << rshape.back();
+        }
+        rolling_op += rname + " = plaidml_op.reshape(";
+        std::vector<std::string> operands;
+        operands.reserve(2);
+        for (auto operand : op->getOperands()) {
+          if (operand.getType().isa<NoneType>())
+            operands.push_back("None");
+          else
+            operands.push_back(PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(operand)));
+        }
+        rolling_op += operands[0] + ", [" + rshape_str.str() + "])\n";
+        functional_edsl_code += rolling_op;
+    } else if (fname == "std.return") {
+        std::string rolling_op = "    return ";
+        auto rname = PlaidML_Translator::legalize_indices(PlaidML_Translator::tensor_index_map.lookup(op->getOperand(0)));
+        rolling_op += rname + "\n";
+        functional_edsl_code += rolling_op;
+    }
+/*
+    top_level_edsl_code += op->getName().getStringRef().str();
+    top_level_edsl_code += "\n";
     auto num_operands = op->getNumOperands();
-    stuff += "number of operands: ";
-    stuff += std::to_string(num_operands);
-    stuff += "\n";
+    top_level_edsl_code += "number of operands: ";
+    top_level_edsl_code += std::to_string(num_operands);
+    top_level_edsl_code += "\n";
     std::vector<int32_t> operands;
     operands.reserve(num_operands);
     for (auto operand : op->getOperands()) {
@@ -1335,114 +1685,173 @@ Optional<std::string> PlaidML_Translator::TranslateInternal() {
     }
     for (auto i = 0; i < num_operands; i++) {
       auto this_operand = operands[i];
-      stuff += "operand #" + std::to_string(i) + " is " + std::to_string(this_operand);
-      stuff += "\n";
-      stuff += "legalized operand # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_operand);
-      stuff += "\n";
+      top_level_edsl_code += "operand #" + std::to_string(i) + " is " + std::to_string(this_operand);
+      top_level_edsl_code += "\n";
+      top_level_edsl_code += "legalized operand # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_operand);
+      top_level_edsl_code += "\n";
     }
     auto attributes = op->getAttrs();
     for (auto attr : attributes) {
         auto attr_name = attr.first.str();
-        stuff += "attribute " + attr_name + " is ";
+        top_level_edsl_code += "attribute " + attr_name + " is ";
         if (std::find(PlaidML_Translator::known_I32Attrs.begin(), PlaidML_Translator::known_I32Attrs.end(), attr_name) != PlaidML_Translator::known_I32Attrs.end()) {
-          stuff += std::to_string(attr.second.cast<IntegerAttr>().getInt());
+          top_level_edsl_code += std::to_string(attr.second.cast<IntegerAttr>().getInt());
         } else if (std::find(PlaidML_Translator::known_TypeAttrs.begin(), PlaidML_Translator::known_TypeAttrs.end(), attr_name) != PlaidML_Translator::known_TypeAttrs.end()) {
           auto type = attr.second.cast<TypeAttr>().getValue();
-          switch (type.getKind()) {
-            case mlir::StandardTypes::RankedTensor:
-              stuff += "Tensor";
-              break;
-            case mlir::StandardTypes::F32:
-              stuff += "FLOAT32";
-              break;
-            case mlir::StandardTypes::F16:
-              stuff += "FLOAT16";
-              break;
-            case mlir::TF::TensorFlowTypes::STRING:
-              stuff += "STRING";
-              break;
-            case mlir::TF::TensorFlowTypes::QUINT8:
-              stuff += "UINT8";
-              break;
-            case mlir::StandardTypes::Complex: {
-              stuff += "unsupported type";
-              break;
+          if (auto tt = type.dyn_cast<TensorType>()) {
+            std::string shape_str;
+            auto tt_shape = tt.getShape();
+            shape_str += "(";
+            for (int i = 0; i < tt.getRank(); i++) {
+              shape_str += std::to_string(tt_shape[i]) + ",";
             }
-            case mlir::StandardTypes::Integer: {
-              const auto& itype = type.cast<mlir::IntegerType>();
-              switch (itype.getWidth()) {
-                case 1:
-                  stuff += "BOOL";
-                  break;
-                case 8:
-                  if (itype.isUnsigned()) {
-                    stuff += "UINT8";
-                    break;
-                  } else {
-                    stuff += "INT8";
-                    break;
-                  }
-                case 16:
-                  stuff += "INT16";
-                  break;
-                case 32:
-                  stuff += "INT32";
-                  break;
-                case 64:
-                  stuff += "INT64";
-                  break;
-              }
-            }
-            case mlir::quant::QuantizationTypes::UniformQuantized: {
-              stuff += "UNIFORM_QUANTIZED";
-            }
-            case mlir::quant::QuantizationTypes::UniformQuantizedPerAxis: {
-              stuff += "UNIFORM_QUANTIZED";
-            }
-            case mlir::TF::TensorFlowTypes::RESOURCE: {
-              stuff += "INT32";
-            }
-            default:
-              stuff += std::to_string(type.getKind());
+            shape_str += ")";
+            auto el_type = tt.getElementType();
+            top_level_edsl_code += "TENSOR " + getTypeStr(el_type) + " SHAPE: " + shape_str;
+          } else {
+            top_level_edsl_code += getTypeStr(type);
           }
         } else if (std::find(PlaidML_Translator::known_StrEnumAttrs.begin(), PlaidML_Translator::known_StrEnumAttrs.end(), attr_name) != PlaidML_Translator::known_StrEnumAttrs.end()) {
-          stuff += attr.second.cast<StringAttr>().getValue().str();
+          top_level_edsl_code += attr.second.cast<StringAttr>().getValue().str();
         } else if (attr_name == "value") {
           // This is the only case where we have an ElementsAttr
           auto el_attr = attr.second.cast<ElementsAttr>();
           auto el_attr_type = el_attr.getType();
-          auto el_attr_shape = el_attr_type.getShape();
-          stuff += "(";
-          for (int i = 0; i < el_attr_type.getRank(); i++) {
-            stuff += std::to_string(el_attr_shape[i]) + ",";
+          if (auto tt = el_attr_type.dyn_cast<TensorType>()) {
+            std::string shape_str;
+            auto tt_shape = tt.getShape();
+            shape_str += "(";
+            for (int i = 0; i < tt.getRank(); i++) {
+              shape_str += std::to_string(tt_shape[i]) + ",";
+            }
+            shape_str += ")";
+            auto el_type = tt.getElementType();
+            top_level_edsl_code += "TENSOR " + getTypeStr(el_type) + " SHAPE: " + shape_str;
+          } else {
+            top_level_edsl_code += getTypeStr(el_attr_type);
           }
-          stuff += ")";
         }
-        stuff += "\n";
+        top_level_edsl_code += "\n";
     }
     auto num_results = op->getNumResults();
-    stuff += "number of results: ";
-    stuff += std::to_string(num_results);
-    stuff += "\n";
+    top_level_edsl_code += "number of results: ";
+    top_level_edsl_code += std::to_string(num_results);
+    top_level_edsl_code += "\n";
     std::vector<int32_t> results;
-    operands.reserve(num_results);
+    results.reserve(num_results);
     for (auto result : op->getResults()) {
       if (result.getType().isa<NoneType>())
         results.push_back(kTfLiteOptionalTensor);
       else
         results.push_back(PlaidML_Translator::tensor_index_map.lookup(result));
+      auto result_type = result.getType();
+      if (auto tt = result_type.dyn_cast<TensorType>()) {
+        std::string shape_str;
+        auto tt_shape = tt.getShape();
+        shape_str += "(";
+        for (int i = 0; i < tt.getRank(); i++) {
+          shape_str += std::to_string(tt_shape[i]) + ",";
+        }
+        shape_str += ")";
+        auto el_type = tt.getElementType();
+        top_level_edsl_code += "TENSOR " + getTypeStr(el_type) + " SHAPE: " + shape_str;
+      } else {
+        top_level_edsl_code += getTypeStr(result_type);
+      }
     }
+    top_level_edsl_code += "\n";
     for (auto i = 0; i < num_results; i++) {
       auto this_result = results[i];
-      stuff += "result #" + std::to_string(i) + " is " + std::to_string(this_result);
-      stuff += "\n";
-      stuff += "legalized result # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_result);
-      stuff += "\n";
+      top_level_edsl_code += "result #" + std::to_string(i) + " is " + std::to_string(this_result);
+      top_level_edsl_code += "\n";
+      top_level_edsl_code += "legalized result # " + std::to_string(i) + " is " + PlaidML_Translator::legalize_indices(this_result);
+      top_level_edsl_code += "\n";
     }
+*/
   });
 
-  return stuff; 
+  std::string consts_str;
 
+  if (!constant_names_and_shapes.empty()) {
+    // copy all the names here
+    bool first = true;
+    for (auto it = constant_names_and_shapes.begin(); it != constant_names_and_shapes.end(); it++) {
+      if (first) {
+        first = false;
+      } else {
+        consts_str += ", ";
+      }
+      consts_str += it->first;
+    }
+  }
+
+  edsl_const_ret += consts_str;
+
+  edsl_const_def += edsl_const_ret;
+
+  edsl_functional_def += consts_str + "):\n";
+
+  top_level_edsl_code += edsl_functional_def;
+  top_level_edsl_code += functional_edsl_code;
+
+  // now, define binders/executables
+  std::string exec_edsl_code = "\n\ndef run_edsl(";
+
+  std::string exec_args;
+  std::string arg_placeholders;
+  unsigned int exec_ninputs = bb.getNumArguments();
+
+  bool first = true;
+  for (auto i : arg_names_and_shapes) {
+    auto input_name = i.first;
+    std::string input_name_lower;
+    for (auto n : input_name) {
+      input_name_lower = ::tolower(n);
+    }
+
+    if (first) {
+      first = false;
+    } else {
+      exec_args += ", ";
+    }
+
+    exec_args += "user_input_" + input_name;
+    arg_placeholders += "    user_input_" + input_name_lower + " = Tensor(LogicalShape(plaidml.DType.INT32, " + i.second + "))\n";
+
+  }
+
+  exec_edsl_code += exec_args + "):\n";
+  exec_edsl_code += arg_placeholders;
+
+  std::string consts_str_lower;
+  for (auto i : consts_str) {
+    consts_str_lower += ::tolower(i);
+  }
+
+  std::string exec_args_lower;
+  for (auto i : exec_args) {
+    exec_args_lower += ::tolower(i);
+  }
+
+  for (auto it : constant_names_and_shapes) {
+    auto name = it.first;
+    std::string name_lower;
+    for (auto i : name) {
+      name_lower += ::tolower(i);
+    }
+    exec_edsl_code += "    " + name_lower + " = Tensor(LogicalShape(plaidml.DType.INT32, [" + it.second + "]))\n";
+  }
+  exec_edsl_code += "    result = edsl_program(" + exec_args_lower + ", " + consts_str_lower + ")\n";
+
+  exec_edsl_code += "    program = Program('edsl_program', [result])\n";
+  exec_edsl_code += "    binder = plaidml_exec.Binder(program)\n";
+  exec_edsl_code += "    executable = binder.compile()\n";
+  exec_edsl_code += "    return program, binder, executable\n";
+
+  //top_level_edsl_code += exec_edsl_code;
+
+  return top_level_edsl_code; 
+  //return edsl_const_def;
 }
 
 }  // namespace
