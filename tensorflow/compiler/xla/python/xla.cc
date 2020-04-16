@@ -41,6 +41,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/layout_util.h"
 #include "tensorflow/compiler/xla/python/bfloat16.h"
 #include "tensorflow/compiler/xla/python/cpu_device.h"
+#include "tensorflow/compiler/xla/python/plaidml_device.h"
 #include "tensorflow/compiler/xla/python/distributed/client.h"
 #include "tensorflow/compiler/xla/python/distributed/distributed.h"
 #include "tensorflow/compiler/xla/python/distributed/service.h"
@@ -927,6 +928,7 @@ PYBIND11_MODULE(xla_extension, m) {
         py::arg("asynchronous") = true,
         py::arg("allocator_config") = GpuAllocatorConfig(),
         py::arg("distributed_client") = nullptr, py::arg("node_id") = 0);
+  m.def("get_plaidml_client", &GetPlaidMLClient, py::arg("asynchronous") = true);
 
   py::class_<PyLocalBuffer, ClientAndUniquePtr<PyLocalBuffer>> buffer(
       m, "PyLocalBuffer");

@@ -993,6 +993,17 @@ cc_library(
 )
 
 cc_library(
+    name = "plaidml_plugin",
+    deps = [
+        ":service",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml:plaidml_transfer_manager",
+        "//tensorflow/compiler/xla/service/plaidml:platform",
+        "//tensorflow/core:stream_executor_no_cuda",
+    ],
+)
+
+cc_library(
     name = "shaped_buffer",
     srcs = ["shaped_buffer.cc"],
     hdrs = ["shaped_buffer.h"],
