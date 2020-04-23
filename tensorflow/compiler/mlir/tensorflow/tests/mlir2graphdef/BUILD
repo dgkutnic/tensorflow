@@ -14,7 +14,7 @@ filegroup(
     testonly = True,
     data = [
         "//tensorflow/compiler/mlir:tf-mlir-translate",
-        "@llvm-project//llvm:FileCheck",
-        "@llvm-project//llvm:not",
+        "@llvm-project-master//llvm:FileCheck",
+        "@llvm-project-master//llvm:not",
     ],
 )

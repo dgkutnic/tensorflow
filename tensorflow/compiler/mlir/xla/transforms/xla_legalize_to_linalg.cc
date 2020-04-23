@@ -17,20 +17,20 @@ limitations under the License.
 
 #include "absl/memory/memory.h"
 #include "llvm/ADT/APInt.h"
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"  // from @llvm-project
-#include "mlir/Dialect/Linalg/IR/LinalgTypes.h"  // from @llvm-project
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
-#include "mlir/IR/AffineExpr.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/Function.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/PatternMatch.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
+#include "mlir/Dialect/Linalg/IR/LinalgOps.h"  // from @llvm-project-master
+#include "mlir/Dialect/Linalg/IR/LinalgTypes.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
+#include "mlir/IR/AffineExpr.h"  // from @llvm-project-master
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
+#include "mlir/IR/Builders.h"  // from @llvm-project-master
+#include "mlir/IR/Function.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
+#include "mlir/IR/Operation.h"  // from @llvm-project-master
+#include "mlir/IR/PatternMatch.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/Transforms/DialectConversion.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/xla/ir/lhlo_ops.h"
 #include "tensorflow/compiler/mlir/xla/transforms/map_xla_to_scalar_op.h"
 #include "tensorflow/compiler/mlir/xla/transforms/rewriters.h"

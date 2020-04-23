@@ -18,11 +18,11 @@ limitations under the License.
 #ifndef TENSORFLOW_COMPILER_MLIR_TENSORFLOW_IR_TF_TYPES_H_
 #define TENSORFLOW_COMPILER_MLIR_TENSORFLOW_IR_TF_TYPES_H_
 
-#include "mlir/IR/Diagnostics.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
+#include "mlir/IR/Diagnostics.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
+#include "mlir/IR/Operation.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/Types.h"  // from @llvm-project-master
 
 namespace mlir {
 namespace TF {

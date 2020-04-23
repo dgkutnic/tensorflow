@@ -158,7 +158,7 @@ tf_cuda_library(
     copts = tf_copts(),
     visibility = [
         "//tensorflow/c:__subpackages__",
-        "//third_party/llvm/llvm-project:__subpackages__",
+        "//third_party/llvm/llvm-project-master:__subpackages__",
     ],
     deps = [
         ":c_api_internal",

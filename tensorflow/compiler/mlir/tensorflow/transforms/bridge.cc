@@ -17,9 +17,9 @@ limitations under the License.
 
 #include <memory>
 
-#include "mlir/IR/Module.h"  // from @llvm-project
-#include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "mlir/Transforms/Passes.h"  // from @llvm-project
+#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/Pass/PassManager.h"  // from @llvm-project-master
+#include "mlir/Transforms/Passes.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/tensorflow/transforms/passes.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/bridge_logger.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/error_util.h"

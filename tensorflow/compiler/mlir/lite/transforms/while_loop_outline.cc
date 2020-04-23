@@ -17,16 +17,16 @@ limitations under the License.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Support/CommandLine.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/Identifier.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Matchers.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
-#include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
+#include "mlir/IR/Builders.h"  // from @llvm-project-master
+#include "mlir/IR/Identifier.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
+#include "mlir/IR/Matchers.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/SymbolTable.h"  // from @llvm-project-master
+#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
 #include "tensorflow/compiler/mlir/op_or_arg_name_mapper.h"

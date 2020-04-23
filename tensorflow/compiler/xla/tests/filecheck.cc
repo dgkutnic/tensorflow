@@ -45,7 +45,7 @@ StatusOr<bool> RunFileCheckWithPatternFile(const std::string& input,
                                            const std::string& pattern_file) {
   // Invoke FileCheck to check whether input matches `pattern`.
   std::string file_check_path = tensorflow::GetDataDependencyFilepath(
-      tensorflow::io::JoinPath("external", "llvm-project", "llvm", "FileCheck"));
+      tensorflow::io::JoinPath("external", "llvm-project-master", "llvm", "FileCheck"));
 
   tensorflow::SubProcess file_check_process;
   file_check_process.SetProgram(

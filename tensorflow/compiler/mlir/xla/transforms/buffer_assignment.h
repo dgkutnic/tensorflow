@@ -18,10 +18,10 @@ limitations under the License.
 
 #include "mlir/Analysis/Dominance.h"
 #include "mlir/Analysis/Liveness.h"
-#include "mlir/IR/Builders.h"   // TF:llvm-project
-#include "mlir/IR/Operation.h"  // TF:llvm-project
+#include "mlir/IR/Builders.h"   // TF:llvm-project-master
+#include "mlir/IR/Operation.h"  // TF:llvm-project-master
 #include "mlir/Support/LLVM.h"
-#include "mlir/Transforms/DialectConversion.h"  // TF:llvm-project
+#include "mlir/Transforms/DialectConversion.h"  // TF:llvm-project-master
 
 namespace mlir {
 namespace xla {

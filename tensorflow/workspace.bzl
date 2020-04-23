@@ -35,6 +35,7 @@ load("//third_party/icu:workspace.bzl", icu = "repo")
 load("//third_party/jpeg:workspace.bzl", jpeg = "repo")
 load("//third_party/nasm:workspace.bzl", nasm = "repo")
 load("//third_party/opencl_headers:workspace.bzl", opencl_headers = "repo")
+load("//third_party/plaidml:workspace.bzl", plaidml = "repo")
 load("//third_party/kissfft:workspace.bzl", kissfft = "repo")
 load("//third_party/pasta:workspace.bzl", pasta = "repo")
 load("//third_party/psimd:workspace.bzl", psimd = "repo")
@@ -60,6 +61,7 @@ def initialize_third_party():
     nasm()
     opencl_headers()
     pasta()
+    plaidml()
     psimd()
     sobol_data()
     vulkan_headers()
@@ -665,7 +667,7 @@ def tf_repositories(path_prefix = "", tf_repo_name = ""):
         "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
     ]
     tf_http_archive(
-        name = "llvm-project",
+        name = "llvm-project-master",
         sha256 = LLVM_SHA256,
         strip_prefix = "llvm-project-" + LLVM_COMMIT,
         urls = LLVM_URLS,

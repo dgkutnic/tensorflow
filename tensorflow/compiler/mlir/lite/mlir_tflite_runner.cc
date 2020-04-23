@@ -30,10 +30,10 @@ limitations under the License.
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SMLoc.h"
 #include "llvm/Support/SourceMgr.h"
-#include "mlir/IR/Function.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Module.h"  // from @llvm-project
-#include "mlir/Parser.h"  // from @llvm-project
+#include "mlir/IR/Function.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
+#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/Parser.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/lite/flatbuffer_export.h"
 #include "tensorflow/compiler/mlir/lite/flatbuffer_export_flags.h"
 #include "tensorflow/core/platform/init_main.h"

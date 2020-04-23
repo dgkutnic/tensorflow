@@ -4,7 +4,7 @@ package(licenses = ["notice"])
 
 glob_lit_tests(
     data = [":test_utilities"],
-    driver = "@llvm-project//mlir:run_lit.sh",
+    driver = "@llvm-project-master//mlir:run_lit.sh",
     test_file_exts = ["mlir"],
 )
 

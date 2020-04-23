@@ -42,20 +42,20 @@ limitations under the License.
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
-#include "mlir/Analysis/Verifier.h"  // from @llvm-project
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/Diagnostics.h"  // from @llvm-project
-#include "mlir/IR/Function.h"  // from @llvm-project
-#include "mlir/IR/Identifier.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Module.h"  // from @llvm-project
-#include "mlir/IR/OpDefinition.h"  // from @llvm-project
-#include "mlir/IR/OperationSupport.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
+#include "mlir/Analysis/Verifier.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
+#include "mlir/IR/Builders.h"  // from @llvm-project-master
+#include "mlir/IR/Diagnostics.h"  // from @llvm-project-master
+#include "mlir/IR/Function.h"  // from @llvm-project-master
+#include "mlir/IR/Identifier.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
+#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/IR/OpDefinition.h"  // from @llvm-project-master
+#include "mlir/IR/OperationSupport.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/Types.h"  // from @llvm-project-master
 #include "tensorflow/compiler/jit/shape_inference_helpers.h"
 #include "tensorflow/compiler/mlir/op_or_arg_name_mapper.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/control_flow_ops.h"

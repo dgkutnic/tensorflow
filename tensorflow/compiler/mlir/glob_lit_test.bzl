@@ -10,7 +10,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 
 # Default values used by the test runner.
 _default_test_file_exts = ["mlir", ".pbtxt", ".td"]
-_default_driver = "@llvm-project//mlir:run_lit.sh"
+_default_driver = "@llvm-project-master//mlir:run_lit.sh"
 _default_size = "small"
 _default_tags = []
 
@@ -51,16 +51,16 @@ def _run_lit_test(name, data, size, tags, driver, features):
     # Disable tests on windows for now, to enable testing rest of all xla and mlir.
     native.py_test(
         name = name,
-        srcs = ["@llvm-project//llvm:lit"],
+        srcs = ["@llvm-project-master//llvm:lit"],
         tags = tags + ["no_windows"],
         args = [
             "tensorflow/compiler/mlir/" + paths.basename(data[-1]) + " --config-prefix=runlit -v",
         ] + features,
         data = data + [
             "//tensorflow/compiler/mlir:litfiles",
-            "@llvm-project//llvm:FileCheck",
-            "@llvm-project//llvm:count",
-            "@llvm-project//llvm:not",
+            "@llvm-project-master//llvm:FileCheck",
+            "@llvm-project-master//llvm:count",
+            "@llvm-project-master//llvm:not",
         ],
         size = size,
         main = "lit.py",

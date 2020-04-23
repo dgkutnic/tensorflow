@@ -22,25 +22,25 @@ limitations under the License.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Block.h"  // from @llvm-project
-#include "mlir/IR/BlockAndValueMapping.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/Diagnostics.h"  // from @llvm-project
-#include "mlir/IR/Function.h"  // from @llvm-project
-#include "mlir/IR/Module.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
-#include "mlir/IR/TypeUtilities.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/IR/Visitors.h"  // from @llvm-project
-#include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project
-#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
+#include "mlir/IR/Block.h"  // from @llvm-project-master
+#include "mlir/IR/BlockAndValueMapping.h"  // from @llvm-project-master
+#include "mlir/IR/Builders.h"  // from @llvm-project-master
+#include "mlir/IR/Diagnostics.h"  // from @llvm-project-master
+#include "mlir/IR/Function.h"  // from @llvm-project-master
+#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/IR/Operation.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/SymbolTable.h"  // from @llvm-project-master
+#include "mlir/IR/TypeUtilities.h"  // from @llvm-project-master
+#include "mlir/IR/Types.h"  // from @llvm-project-master
+#include "mlir/IR/Value.h"  // from @llvm-project-master
+#include "mlir/IR/Visitors.h"  // from @llvm-project-master
+#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/Support/LLVM.h"  // from @llvm-project-master
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project-master
+#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"

@@ -18,20 +18,20 @@ limitations under the License.
 #include <memory>
 
 #include "absl/container/flat_hash_map.h"
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"  // from @llvm-project
-#include "mlir/Dialect/GPU/GPUDialect.h"  // from @llvm-project
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"  // from @llvm-project
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Function.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Module.h"  // from @llvm-project
-#include "mlir/IR/OperationSupport.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Target/NVVMIR.h"  // from @llvm-project
+#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"  // from @llvm-project-master
+#include "mlir/Dialect/GPU/GPUDialect.h"  // from @llvm-project-master
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
+#include "mlir/IR/Function.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
+#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/IR/OperationSupport.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/Value.h"  // from @llvm-project-master
+#include "mlir/Support/LLVM.h"  // from @llvm-project-master
+#include "mlir/Target/NVVMIR.h"  // from @llvm-project-master
 #include "tensorflow/compiler/xla/service/buffer_assignment.h"
 #include "tensorflow/compiler/xla/service/dump.h"
 #include "tensorflow/compiler/xla/service/gpu/gpu_constants.h"

@@ -42,7 +42,7 @@ cc_library(
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
         "@com_google_absl//absl/strings",
-        "@llvm-project//mlir:IR",
+        "@llvm-project-master//mlir:IR",
     ],
 )
 
@@ -51,8 +51,8 @@ cc_library(
     srcs = ["inject_errors_pass.cc"],
     hdrs = ["inject_errors_pass.h"],
     deps = [
-        "@llvm-project//mlir:Pass",
-        "@llvm-project//mlir:StandardOps",
+        "@llvm-project-master//mlir:Pass",
+        "@llvm-project-master//mlir:StandardOps",
     ],
 )
 
@@ -66,14 +66,14 @@ cc_library(
         ":kernel_lowering",
         ":lhlo_dialect_emitter",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@llvm-project//mlir:GPUDialect",
-        "@llvm-project//mlir:AllPassesAndDialects",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:LLVMDialect",
-        "@llvm-project//mlir:LLVMTransforms",
-        "@llvm-project//mlir:StandardOps",
-        "@llvm-project//mlir:Support",
-        "@llvm-project//mlir:TargetNVVMIR",
+        "@llvm-project-master//mlir:GPUDialect",
+        "@llvm-project-master//mlir:AllPassesAndDialects",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:LLVMDialect",
+        "@llvm-project-master//mlir:LLVMTransforms",
+        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project-master//mlir:Support",
+        "@llvm-project-master//mlir:TargetNVVMIR",
         "//tensorflow/compiler/xla:util",
         "//tensorflow/compiler/xla/service:buffer_assignment",
         "//tensorflow/compiler/xla/service:compiler",
@@ -110,9 +110,9 @@ cc_library(
         "//tensorflow/compiler/xla:status",
         "//tensorflow/compiler/xla/service:hlo",
         "@com_google_absl//absl/types:span",
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:StandardOps",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:StandardOps",
     ],
 )
 
@@ -134,9 +134,9 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/stream_executor:stream_executor_headers",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:LLVMDialect",
-        "@llvm-project//mlir:StandardOps",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:LLVMDialect",
+        "@llvm-project-master//mlir:StandardOps",
     ],
 )
 
@@ -203,8 +203,8 @@ cc_library(
         "//tensorflow/core/platform:resource_loader",
         "//tensorflow/core/platform:test",
         "@com_google_absl//absl/memory",
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Pass",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:Pass",
     ],
 )

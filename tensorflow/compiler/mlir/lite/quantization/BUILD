@@ -29,8 +29,8 @@ filegroup(
     name = "quantization_td_files",
     srcs = [
         "quantization.td",
-        "@llvm-project//mlir:OpBaseTdFiles",
-        "@llvm-project//mlir:QuantizationOpsTdFiles",
+        "@llvm-project-master//mlir:OpBaseTdFiles",
+        "@llvm-project-master//mlir:QuantizationOpsTdFiles",
     ],
 )
 
@@ -56,13 +56,13 @@ cc_library(
         "//tensorflow/core:lib_proto_parsing",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:Analysis",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Pass",
-        "@llvm-project//mlir:QuantOps",
-        "@llvm-project//mlir:StandardOps",
-        "@llvm-project//mlir:Support",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:Analysis",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:Pass",
+        "@llvm-project-master//mlir:QuantOps",
+        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project-master//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -80,11 +80,11 @@ cc_library(
     deps = [
         "//tensorflow/core:lib_proto_parsing",
         "@com_google_absl//absl/memory",
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:QuantOps",
-        "@llvm-project//mlir:StandardOps",
-        "@llvm-project//mlir:Support",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:QuantOps",
+        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project-master//mlir:Support",
     ],
 )
 
@@ -99,7 +99,7 @@ cc_library(
     deps = [
         "//tensorflow/core:protos_all_cc",
         "@com_google_absl//absl/strings",
-        "@llvm-project//llvm:support",
+        "@llvm-project-master//llvm:support",
     ],
 )
 
@@ -109,9 +109,9 @@ tf_native_cc_binary(
         "tools/op_quant_spec_getters_gen.cc",
     ],
     deps = [
-        "@llvm-project//llvm:support",
-        "@llvm-project//llvm:tablegen",
-        "@llvm-project//mlir:TableGen",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//llvm:tablegen",
+        "@llvm-project-master//mlir:TableGen",
     ],
 )
 
@@ -129,10 +129,10 @@ cc_library(
     srcs = ["device_target.cc"],
     hdrs = ["device_target.h"],
     deps = [
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:QuantOps",
-        "@llvm-project//mlir:Support",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:QuantOps",
+        "@llvm-project-master//mlir:Support",
     ],
 )
 
@@ -144,11 +144,11 @@ cc_library(
         ":device_target",
         ":quantization_lib",
         "@com_google_absl//absl/memory",
-        "@llvm-project//llvm:support",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:QuantOps",
-        "@llvm-project//mlir:StandardOps",
-        "@llvm-project//mlir:Support",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//mlir:IR",
+        "@llvm-project-master//mlir:QuantOps",
+        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project-master//mlir:Support",
     ],
 )
 

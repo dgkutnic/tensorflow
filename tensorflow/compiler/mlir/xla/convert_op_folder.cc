@@ -17,9 +17,9 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/xla/convert_op_folder.h"
 
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project
-#include "mlir/IR/TypeUtilities.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
+#include "mlir/IR/TypeUtilities.h"  // from @llvm-project-master
 
 namespace mlir {
 namespace xla {

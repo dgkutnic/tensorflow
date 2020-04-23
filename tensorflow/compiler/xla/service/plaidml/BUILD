@@ -57,6 +57,8 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/stream_executor",
         "@com_google_absl//absl/memory",
+        "@com_intel_plaidml//plaidml/edsl:edsl",
+        #"@com_intel_plaidml//pmlc/dialect/tile:tile",
     ],
     alwayslink = True,  # Contains compiler registration
 )

@@ -24,9 +24,9 @@ limitations under the License.
 #include "absl/memory/memory.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "mlir/Dialect/Quant/FakeQuantSupport.h"  // from @llvm-project
-#include "mlir/Dialect/Quant/QuantOps.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
+#include "mlir/Dialect/Quant/FakeQuantSupport.h"  // from @llvm-project-master
+#include "mlir/Dialect/Quant/QuantOps.h"  // from @llvm-project-master
+#include "mlir/IR/Location.h"  // from @llvm-project-master
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
 #include "tensorflow/compiler/mlir/lite/quantization/quantization_utils.h"
 

@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <numeric>
 
-#include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project-master
 
 namespace mlir {
 namespace xla {

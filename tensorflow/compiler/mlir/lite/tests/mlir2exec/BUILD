@@ -12,7 +12,7 @@ licenses(["notice"])
 
 glob_lit_tests(
     data = [":test_utilities"],
-    driver = "@llvm-project//mlir:run_lit.sh",
+    driver = "@llvm-project-master//mlir:run_lit.sh",
     test_file_exts = ["mlir"],
 )
 
@@ -23,7 +23,7 @@ filegroup(
     data = [
         "//tensorflow/compiler/mlir:tf-opt",
         "//tensorflow/compiler/mlir/lite:mlir-tflite-runner",
-        "@llvm-project//llvm:FileCheck",
-        "@llvm-project//llvm:not",
+        "@llvm-project-master//llvm:FileCheck",
+        "@llvm-project-master//llvm:not",
     ],
 )

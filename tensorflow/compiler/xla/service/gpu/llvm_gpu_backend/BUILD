@@ -39,20 +39,20 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@llvm-project//llvm:amdgpu_code_gen",
-        "@llvm-project//llvm:analysis",
-        "@llvm-project//llvm:bit_reader",
-        "@llvm-project//llvm:bit_writer",
-        "@llvm-project//llvm:code_gen",
-        "@llvm-project//llvm:core",
-        "@llvm-project//llvm:ipo",
-        "@llvm-project//llvm:ir_reader",
-        "@llvm-project//llvm:linker",
-        "@llvm-project//llvm:nvptx_code_gen",  # buildcleaner: keep
-        "@llvm-project//llvm:objc_arc",  # buildcleaner: keep
-        "@llvm-project//llvm:scalar",
-        "@llvm-project//llvm:support",
-        "@llvm-project//llvm:target",
+        "@llvm-project-master//llvm:amdgpu_code_gen",
+        "@llvm-project-master//llvm:analysis",
+        "@llvm-project-master//llvm:bit_reader",
+        "@llvm-project-master//llvm:bit_writer",
+        "@llvm-project-master//llvm:code_gen",
+        "@llvm-project-master//llvm:core",
+        "@llvm-project-master//llvm:ipo",
+        "@llvm-project-master//llvm:ir_reader",
+        "@llvm-project-master//llvm:linker",
+        "@llvm-project-master//llvm:nvptx_code_gen",  # buildcleaner: keep
+        "@llvm-project-master//llvm:objc_arc",  # buildcleaner: keep
+        "@llvm-project-master//llvm:scalar",
+        "@llvm-project-master//llvm:support",
+        "@llvm-project-master//llvm:target",
     ],
 )
 
@@ -70,7 +70,7 @@ tf_cc_test(
         "//tensorflow/core:lib",
         "//tensorflow/core:test",
         "//tensorflow/core/platform:resource_loader",
-        "@llvm-project//llvm:core",
-        "@llvm-project//llvm:support",
+        "@llvm-project-master//llvm:core",
+        "@llvm-project-master//llvm:support",
     ],
 )

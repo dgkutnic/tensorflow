@@ -7,7 +7,7 @@ glob_lit_tests(
         ":debug_info_files",
         ":test_utilities",
     ],
-    driver = "@llvm-project//mlir:run_lit.sh",
+    driver = "@llvm-project-master//mlir:run_lit.sh",
     tags_override = {
         "error-message-with-source-info.pbtxt": ["no_oss"],  # TODO(b/150946057): to be fixed on oss.
     },
@@ -20,8 +20,8 @@ filegroup(
     testonly = True,
     data = [
         "//tensorflow/compiler/mlir:tf-mlir-translate",
-        "@llvm-project//llvm:FileCheck",
-        "@llvm-project//llvm:not",
+        "@llvm-project-master//llvm:FileCheck",
+        "@llvm-project-master//llvm:not",
     ],
 )
 
