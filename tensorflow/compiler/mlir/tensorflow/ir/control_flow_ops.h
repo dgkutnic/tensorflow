@@ -23,10 +23,10 @@ limitations under the License.
 #ifndef TENSORFLOW_COMPILER_MLIR_TENSORFLOW_IR_CONTROL_FLOW_OPS_H_
 #define TENSORFLOW_COMPILER_MLIR_TENSORFLOW_IR_CONTROL_FLOW_OPS_H_
 
-#include "mlir/IR/Dialect.h"  // from @llvm-project-master
-#include "mlir/IR/OpDefinition.h"  // from @llvm-project-master
-#include "mlir/IR/Types.h"  // from @llvm-project-master
-#include "mlir/Interfaces/SideEffects.h"  // from @llvm-project-master
+#include "mlir/IR/Dialect.h"  // from @llvm-project
+#include "mlir/IR/OpDefinition.h"  // from @llvm-project
+#include "mlir/IR/Types.h"  // from @llvm-project
+#include "mlir/Interfaces/SideEffects.h"  // from @llvm-project
 
 namespace mlir {
 namespace TFControlFlow {

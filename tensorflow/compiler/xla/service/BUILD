@@ -1112,7 +1112,7 @@ cc_library(
     deps = [
         ":compiler",
         "//tensorflow/core:lib_internal",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -3751,8 +3751,8 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:transform_utils",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:transform_utils",
     ],
 )
 

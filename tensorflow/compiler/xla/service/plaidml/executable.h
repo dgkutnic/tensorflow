@@ -35,6 +35,9 @@ limitations under the License.
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/stream_executor_no_cuda.h"
 #include "tensorflow/core/platform/types.h"
+#include "plaidml/edsl/edsl.h"
+
+using ::plaidml::edsl::Program;
 
 namespace xla {
 namespace plaidml {
@@ -44,7 +47,7 @@ namespace plaidml {
 class PlaidMLExecutable : public PlaidMLExecutableBase {
  public:
   PlaidMLExecutable(
-      std::unique_ptr<HloModule> hlo_module,
+      std::unique_ptr<Program> plaidml_program,
       std::unique_ptr<HloEvaluator> evaluator,
       absl::optional<DynamicDimensionInference> dynamic_dymension_inference);
 

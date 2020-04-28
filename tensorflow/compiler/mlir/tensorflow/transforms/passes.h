@@ -18,7 +18,7 @@ limitations under the License.
 
 #include <memory>
 
-#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/Pass/Pass.h"  // from @llvm-project
 
 namespace mlir {
 

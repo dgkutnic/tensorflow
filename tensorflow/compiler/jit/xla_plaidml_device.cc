@@ -105,7 +105,7 @@ Status XlaPlaidMLDeviceFactory::CreateDevices(
   return Status::OK();
 }
 
-REGISTER_LOCAL_DEVICE_FACTORY(DEVICE_XLA_PLAIDML, XlaPlaidMLDeviceFactory);
+REGISTER_LOCAL_DEVICE_FACTORY(DEVICE_XLA_PLAIDML, XlaPlaidMLDeviceFactory, 250);
 
 // Kernel registrations
 

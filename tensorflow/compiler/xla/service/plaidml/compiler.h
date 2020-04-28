@@ -21,6 +21,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/service/compiler.h"
 #include "tensorflow/compiler/xla/service/executable.h"
+//#include "tensorflow/compiler/xla/service/plaidml/executable.h"
 #include "tensorflow/compiler/xla/service/hlo_cost_analysis.h"
 #include "tensorflow/compiler/xla/service/hlo_module.h"
 #include "tensorflow/compiler/xla/service/hlo_module_config.h"
@@ -30,37 +31,43 @@ limitations under the License.
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/stream_executor/stream_executor.h"
+#include "plaidml/edsl/edsl.h"
+
+using ::plaidml::edsl::Program;
 
 namespace xla {
 namespace plaidml {
 
-// Despite the inherited "compiler" naming, PlaidMLCompiler does not
-// perform any lowering as other backends do. It operates at HLO-level for
-// and is responsible for generating an PlaidMLExecutable.
-// Refer to plaidml/README.md for more.
 class PlaidMLCompiler : public Compiler {
  public:
-  PlaidMLCompiler() {}
-  ~PlaidMLCompiler() override {}
+  PlaidMLCompiler() {
+    VLOG(1) << "Initializing PlaidMLCompiler";
+  }
+  ~PlaidMLCompiler() {}
+
+  Program ProgramFromHloModule (
+      HloModule* hlo_module);
 
   StatusOr<std::unique_ptr<HloModule>> RunHloPasses(
       std::unique_ptr<HloModule> hlo_module, se::StreamExecutor* stream_exec,
-      se::DeviceMemoryAllocator* device_allocator) override;
+      se::DeviceMemoryAllocator* device_allocator);
+//  StatusOr<std::unique_ptr<xla::plaidml::PlaidMLExecutable>> RunBackend(
   StatusOr<std::unique_ptr<Executable>> RunBackend(
       std::unique_ptr<HloModule> hlo_module, se::StreamExecutor* stream_exec,
-      se::DeviceMemoryAllocator* device_allocator) override;
+      se::DeviceMemoryAllocator* device_allocator);
+//  StatusOr<std::vector<std::unique_ptr<xla::plaidml::PlaidMLExecutable>>> Compile(
   StatusOr<std::vector<std::unique_ptr<Executable>>> Compile(
       std::unique_ptr<HloModuleGroup> module_group,
       std::vector<std::vector<se::StreamExecutor*>> stream_exec,
-      se::DeviceMemoryAllocator* device_allocator) override;
+      se::DeviceMemoryAllocator* device_allocator);
 
   StatusOr<std::vector<std::unique_ptr<AotCompilationResult>>>
   CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
-                     const AotCompilationOptions& aot_options) override;
+                     const AotCompilationOptions& aot_options);
 
-  HloCostAnalysis::ShapeSizeFunction ShapeSizeBytesFunction() const override;
+  HloCostAnalysis::ShapeSizeFunction ShapeSizeBytesFunction() const;
 
-  se::Platform::Id PlatformId() const override;
+  se::Platform::Id PlatformId() const;
 
  private:
   Status RunHloOptimization(HloModule* hlo_module);

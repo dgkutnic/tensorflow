@@ -31,7 +31,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_pass_fix.h"
 #include "tensorflow/compiler/xla/service/hlo_pass_pipeline.h"
 #include "tensorflow/compiler/xla/service/hlo_subcomputation_unification.h"
-#include "tensorflow/compiler/xla/service/plaidml/executable.h"
+//#include "tensorflow/compiler/xla/service/plaidml/executable.h"
 #include "tensorflow/compiler/xla/service/layout_assignment.h"
 #include "tensorflow/compiler/xla/service/map_inliner.h"
 #include "tensorflow/compiler/xla/service/reshape_mover.h"
@@ -40,6 +40,17 @@ limitations under the License.
 #include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/types.h"
+#include "plaidml/edsl/edsl.h"
+
+using ::plaidml::edsl::Placeholder;
+using ::plaidml::edsl::Program;
+using ::plaidml::edsl::ProgramBuilder;
+using ::plaidml::edsl::Tensor;
+using ::plaidml::edsl::TensorDim;
+using ::plaidml::edsl::TensorIndex;
+using ::plaidml::edsl::TensorOutput;
+
+using ::plaidml::DType;
 
 namespace xla {
 namespace plaidml {
@@ -97,6 +108,73 @@ StatusOr<std::unique_ptr<HloModule>> PlaidMLCompiler::RunHloPasses(
   return std::move(hlo_module);
 }
 
+// Remove after testing
+Tensor Dot(const Tensor& X, const Tensor& Y) {
+  TensorDim I, J, K;
+  TensorIndex i("i"), j("j"), k("k");
+  X.bind_dims(I, K);
+  Y.bind_dims(K, J);
+  auto R = TensorOutput(I, J);
+  R(i, j) += X(i, k) * Y(k, j);
+  return R;
+}
+
+Program makeProgram(const std::string& name, const std::vector<Tensor>& outputs) {
+  auto program = ProgramBuilder(name, outputs).compile();
+  std::cout << program << std::endl;
+  return program;
+}
+
+// Translate HLO Module to EDSL
+Program PlaidMLCompiler::ProgramFromHloModule (
+    HloModule* hlo_module) {
+
+  for (auto* computation : hlo_module->computations()) {
+    for (auto* instruction : computation->instructions()) {
+      switch (instruction->opcode()) {
+        // Unary ops.
+        case HloOpcode::kAbs:
+        case HloOpcode::kRoundNearestAfz:
+        case HloOpcode::kBitcast:
+        case HloOpcode::kCeil:
+        case HloOpcode::kClz:
+        case HloOpcode::kCopy:
+        case HloOpcode::kCopyStart:
+        case HloOpcode::kCopyDone:
+        case HloOpcode::kCos:
+        case HloOpcode::kExp:
+        case HloOpcode::kExpm1:
+        case HloOpcode::kImag:
+        case HloOpcode::kIsFinite:
+        case HloOpcode::kFloor:
+        case HloOpcode::kLog:
+        case HloOpcode::kLog1p:
+        case HloOpcode::kNot:
+        case HloOpcode::kNegate:
+        case HloOpcode::kPopulationCount:
+        case HloOpcode::kReal:
+        case HloOpcode::kRsqrt:
+        case HloOpcode::kSign:
+        case HloOpcode::kSin:
+        case HloOpcode::kSqrt:
+        case HloOpcode::kTanh: {
+          // Parse operands.
+        }
+        // Perhaps add a message here that the op isn't implemented for the plaidml backend (yet)
+        default:
+          break;
+      }
+    }
+  }
+
+  auto A = Placeholder(DType::FLOAT32, {8, 16});
+  auto B = Placeholder(DType::FLOAT32, {16, 32});
+  auto C = Dot(A, B);
+  auto program = makeProgram("dot", {C});
+  return program;
+}
+
+//StatusOr<std::unique_ptr<xla::plaidml::PlaidMLExecutable>> PlaidMLCompiler::RunBackend(
 StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
     std::unique_ptr<HloModule> hlo_module, se::StreamExecutor* stream_exec,
     se::DeviceMemoryAllocator* /*device_allocator*/) {
@@ -104,6 +182,7 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
 
   VLOG(1) << "Run backend PLAIDML " << hlo_module->name();
 
+  /*
   TF_ASSIGN_OR_RETURN(DynamicDimensionInference dynamic_dimension_inference,
                       DynamicDimensionInference::Run(hlo_module.get()));
 
@@ -111,22 +190,28 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
   evaluator->set_use_fast_path(
       hlo_module->config().debug_options().xla_hlo_evaluator_use_fast_path());
   evaluator->set_custom_call_handler(HandleEvaluatorCustomCall);
+  */
 
-  // Create executable from only the Hlo module.
+  auto plaidml_program = ProgramFromHloModule(hlo_module.get());
+
+  // Create executable from the PlaidML Program.
+  /*
   std::unique_ptr<Executable> executable =
-      absl::make_unique<PlaidMLExecutable>(
+      absl::make_unique<Executable>(
           std::move(hlo_module), std::move(evaluator),
           std::move(dynamic_dimension_inference));
+  */
 
-  return std::move(executable);
+  //return std::move(executable);
 }
 
+//StatusOr<std::vector<std::unique_ptr<xla::plaidml::PlaidMLExecutable>>> PlaidMLCompiler::Compile(
 StatusOr<std::vector<std::unique_ptr<Executable>>> PlaidMLCompiler::Compile(
     std::unique_ptr<HloModuleGroup> module_group,
     std::vector<std::vector<se::StreamExecutor*>> stream_exec,
     se::DeviceMemoryAllocator* device_allocator) {
   if (module_group->empty()) {
-    return std::vector<std::unique_ptr<Executable>>();
+    //return std::vector<std::unique_ptr<Executable>>();
   }
   if (module_group->size() > 1) {
     return tensorflow::errors::Unimplemented(
@@ -162,7 +247,8 @@ se::Platform::Id PlaidMLCompiler::PlatformId() const {
 
 HloCostAnalysis::ShapeSizeFunction PlaidMLCompiler::ShapeSizeBytesFunction()
     const {
-  return PlaidMLExecutable::ShapeSizeBytes;
+  //return PlaidMLExecutable::ShapeSizeBytes;
+  return nullptr;
 }
 
 static bool InitModule() {

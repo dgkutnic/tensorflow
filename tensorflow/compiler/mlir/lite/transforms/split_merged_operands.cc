@@ -18,24 +18,24 @@ limitations under the License.
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Casting.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
-#include "mlir/IR/Attributes.h"  // from @llvm-project-master
-#include "mlir/IR/Block.h"  // from @llvm-project-master
-#include "mlir/IR/Builders.h"  // from @llvm-project-master
-#include "mlir/IR/Function.h"  // from @llvm-project-master
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/Matchers.h"  // from @llvm-project-master
-#include "mlir/IR/Module.h"  // from @llvm-project-master
-#include "mlir/IR/Operation.h"  // from @llvm-project-master
-#include "mlir/IR/OperationSupport.h"  // from @llvm-project-master
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project-master
-#include "mlir/IR/Types.h"  // from @llvm-project-master
-#include "mlir/IR/Value.h"  // from @llvm-project-master
-#include "mlir/Pass/Pass.h"  // from @llvm-project-master
-#include "mlir/Pass/PassRegistry.h"  // from @llvm-project-master
-#include "mlir/Support/LLVM.h"  // from @llvm-project-master
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/Block.h"  // from @llvm-project
+#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/IR/Function.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/Matchers.h"  // from @llvm-project
+#include "mlir/IR/Module.h"  // from @llvm-project
+#include "mlir/IR/Operation.h"  // from @llvm-project
+#include "mlir/IR/OperationSupport.h"  // from @llvm-project
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project
+#include "mlir/IR/SymbolTable.h"  // from @llvm-project
+#include "mlir/IR/Types.h"  // from @llvm-project
+#include "mlir/IR/Value.h"  // from @llvm-project
+#include "mlir/Pass/Pass.h"  // from @llvm-project
+#include "mlir/Pass/PassRegistry.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
 #include "tensorflow/compiler/mlir/lite/utils/stateful_ops_utils.h"
 

@@ -17,8 +17,8 @@ limitations under the License.
 
 #include "absl/algorithm/container.h"
 #include "llvm/ADT/StringRef.h"
-#include "mlir/Dialect/Affine/IR/AffineOps.h"  // from @llvm-project-master
-#include "mlir/Transforms/LoopUtils.h"  // from @llvm-project-master
+#include "mlir/Dialect/Affine/IR/AffineOps.h"  // from @llvm-project
+#include "mlir/Transforms/LoopUtils.h"  // from @llvm-project
 #include "tensorflow/core/platform/logging.h"
 
 namespace xla {

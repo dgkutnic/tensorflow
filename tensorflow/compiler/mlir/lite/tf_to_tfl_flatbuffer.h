@@ -20,9 +20,9 @@ limitations under the License.
 
 #include "absl/types/span.h"
 #include "llvm/Support/SourceMgr.h"
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/Module.h"  // from @llvm-project-master
-#include "mlir/Pass/PassManager.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/Module.h"  // from @llvm-project
+#include "mlir/Pass/PassManager.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/common/tfl_pass_config.h"
 #include "tensorflow/compiler/mlir/lite/quantization/quantization_config.h"
 #include "tensorflow/stream_executor/lib/statusor.h"

@@ -28,21 +28,62 @@ limitations under the License.
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/statusor.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
+#include "plaidml/edsl/edsl.h"
+
+using ::plaidml::edsl::Program;
+
 namespace xla {
 namespace plaidml {
 
-// Responsible for running a HLO graph through the HloEvaluator and output
-// buffer allocation. Refer to plaidml/README.md for more.
+// PlaidML Executable Base
 class PlaidMLExecutableBase : public Executable {
  public:
-  explicit PlaidMLExecutableBase(std::unique_ptr<HloModule> hlo_module);
+  explicit PlaidMLExecutableBase(
+      std::shared_ptr<Program> plaidml_program) : Executable(nullptr, nullptr, nullptr), program_(plaidml_program) {};
 
   StatusOr<ExecutionOutput> ExecuteAsyncOnStream(
       const ServiceExecutableRunOptions* run_options,
       std::vector<ExecutionInput> arguments,
-      HloExecutionProfile* hlo_execution_profile) override;
+      HloExecutionProfile* hlo_execution_profile);
+
+  Program& program() const { return *program_; }
+  std::shared_ptr<Program> shared_program() const { return program_; }
+
+  const bool has_program() const { return program_ != nullptr; }
+
+  /*
+  Most of these describe things that the PlaidML Binder does
+  TODO: Add binder to protected vars, add binder functions to this executable
+  const HloModuleConfig& module_config() const { return hlo_module_->config(); }
+
+  // The shape (including layout) that results from this execution. This is the
+  // shape of the DeviceMemoryBase result value in ExecuteOnStream above.
+  const Shape& result_shape() const {
+    return hlo_module_->config().entry_computation_layout().result_shape();
+  }
+
+  // Returns the size of the executable in bytes. Returns -1 if this query is
+  // not supported by the executable.
+  //
+  // Does not include the size of used libraries (e.g. cuDNN, Eigen, etc.).
+  virtual int64 SizeOfGeneratedCodeInBytes();
+
+  // Dumping helpers.
+  void set_hlo_proto(std::unique_ptr<xla::HloProto> hlo_proto) {
+    hlo_proto_ = std::move(hlo_proto);
+  }
+  bool dumping_snapshot() const { return hlo_proto_ != nullptr; }
+  HloProto const* hlo_proto() const { return hlo_proto_.get(); }
+  */
 
  protected:
+  // PlaidML program this was compiled from.
+  const std::shared_ptr<Program> program_;
+
+  // Execution count, used to generate a unique filename for each dumped
+  // execution.
+  int64 execution_count_ = 0;
+
   virtual StatusOr<Literal> Evaluate(
       const HloComputation& computation,
       absl::Span<const Literal> arg_literals) = 0;

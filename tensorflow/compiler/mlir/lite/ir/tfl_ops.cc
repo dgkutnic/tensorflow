@@ -27,19 +27,19 @@ limitations under the License.
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
-#include "mlir/IR/Attributes.h"  // from @llvm-project-master
-#include "mlir/IR/Builders.h"  // from @llvm-project-master
-#include "mlir/IR/Matchers.h"  // from @llvm-project-master
-#include "mlir/IR/OpImplementation.h"  // from @llvm-project-master
-#include "mlir/IR/PatternMatch.h"  // from @llvm-project-master
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
-#include "mlir/IR/TypeUtilities.h"  // from @llvm-project-master
-#include "mlir/Support/LLVM.h"  // from @llvm-project-master
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project-master
-#include "mlir/Transforms/FoldUtils.h"  // from @llvm-project-master
-#include "mlir/Transforms/InliningUtils.h"  // from @llvm-project-master
-#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/IR/Matchers.h"  // from @llvm-project
+#include "mlir/IR/OpImplementation.h"  // from @llvm-project
+#include "mlir/IR/PatternMatch.h"  // from @llvm-project
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project
+#include "mlir/IR/TypeUtilities.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
+#include "mlir/Transforms/FoldUtils.h"  // from @llvm-project
+#include "mlir/Transforms/InliningUtils.h"  // from @llvm-project
+#include "mlir/Transforms/RegionUtils.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 
 namespace mlir {

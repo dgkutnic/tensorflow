@@ -20,10 +20,10 @@ limitations under the License.
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
-#include "mlir/IR/Builders.h"  // from @llvm-project-master
-#include "mlir/IR/Function.h"  // from @llvm-project-master
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/Module.h"  // from @llvm-project-master
+#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/IR/Function.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/Module.h"  // from @llvm-project
 #include "tensorflow/compiler/xla/service/buffer_assignment.h"
 #include "tensorflow/compiler/xla/service/gpu/thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/thunk_emitter.h"

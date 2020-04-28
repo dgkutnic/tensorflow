@@ -39,10 +39,10 @@ namespace xla {
 namespace plaidml {
 
 PlaidMLExecutable::PlaidMLExecutable(
-    std::unique_ptr<HloModule> hlo_module,
+    std::unique_ptr<Program> plaidml_program,
     std::unique_ptr<HloEvaluator> evaluator,
     absl::optional<DynamicDimensionInference> dynamic_dymension_inference)
-    : PlaidMLExecutableBase(std::move(hlo_module)),
+    : PlaidMLExecutableBase(std::move(plaidml_program)),
       evaluator_(std::move(evaluator)),
       dynamic_dimension_inference_(std::move(dynamic_dymension_inference)) {
   if (dynamic_dimension_inference_.has_value()) {

@@ -18,8 +18,8 @@ limitations under the License.
 
 #include <memory>
 
-#include "mlir/IR/Function.h"  // from @llvm-project-master
-#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/IR/Function.h"  // from @llvm-project
+#include "mlir/Pass/Pass.h"  // from @llvm-project
 
 namespace mlir {
 namespace TF {

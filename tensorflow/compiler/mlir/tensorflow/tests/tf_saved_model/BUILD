@@ -26,7 +26,7 @@ filegroup(
     name = "test_utilities",
     testonly = True,
     data = [
-        "@llvm-project-master//llvm:FileCheck",
+        "@llvm-project//llvm:FileCheck",
     ],
 )
 

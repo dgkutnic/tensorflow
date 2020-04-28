@@ -29,9 +29,9 @@ filegroup(
         "ir/tfl_op_interfaces.td",
         "ir/tfl_ops.td",
         "//tensorflow/compiler/mlir/lite/quantization:quantization_td_files",
-        "@llvm-project-master//mlir:OpBaseTdFiles",
-        "@llvm-project-master//mlir:include/mlir/Interfaces/LoopLikeInterface.td",
-        "@llvm-project-master//mlir:include/mlir/Interfaces/SideEffects.td",
+        "@llvm-project//mlir:OpBaseTdFiles",
+        "@llvm-project//mlir:include/mlir/Interfaces/LoopLikeInterface.td",
+        "@llvm-project//mlir:include/mlir/Interfaces/SideEffects.td",
     ],
 )
 
@@ -59,7 +59,7 @@ gentbl(
             "g3doc/tfl_ops.md",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "ir/tfl_ops.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
@@ -78,7 +78,7 @@ gentbl(
             "ir/tfl_ops_interface.cc.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "ir/tfl_op_interfaces.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
@@ -93,11 +93,11 @@ gentbl(
             "transforms/generated_prepare_tf.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/prepare_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_ops_td_files",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_optimize_td_files",
     ],
@@ -111,11 +111,11 @@ gentbl(
             "transforms/generated_lower_static_tensor_list.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/tensorlist_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_ops_td_files",
     ],
 )
@@ -128,11 +128,11 @@ gentbl(
             "transforms/generated_legalize_tf.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/legalize_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_ops_td_files",
     ],
 )
@@ -145,11 +145,11 @@ gentbl(
             "transforms/generated_optimize.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/optimize_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_ops_td_files",
     ],
 )
@@ -162,11 +162,11 @@ gentbl(
             "transforms/generated_quantize.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/quantize_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
     ],
 )
 
@@ -178,11 +178,11 @@ gentbl(
             "transforms/generated_post_quantize.inc",
         ),
     ],
-    tblgen = "@llvm-project-master//mlir:mlir-tblgen",
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "transforms/post_quantize_patterns.td",
     td_srcs = [
         ":tensorflow_lite_ops_td_files",
-        "@llvm-project-master//mlir:StdOpsTdFiles",
+        "@llvm-project//mlir:StdOpsTdFiles",
     ],
 )
 
@@ -195,9 +195,9 @@ cc_library(
         "utils/validators.h",
     ],
     deps = [
-        "@llvm-project-master//mlir:Dialect",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project//mlir:Dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:StandardOps",
     ],
 )
 
@@ -217,7 +217,7 @@ cc_library(
         "transforms/passes.h",
         "utils/attribute_utils.h",
         "//tensorflow/compiler/mlir/lite/quantization:quantization_traits.h",
-        "@llvm-project-master//mlir:include/mlir/Transforms/InliningUtils.h",
+        "@llvm-project//mlir:include/mlir/Transforms/InliningUtils.h",
     ],
     deps = [
         ":tensorflow_lite_ops_inc_gen",
@@ -225,18 +225,18 @@ cc_library(
         "//tensorflow/compiler/mlir/lite/experimental/estimators:cost_estimators",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_types",
         "//tensorflow/lite/schema:schema_fbs",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:Analysis",
-        "@llvm-project-master//mlir:DerivedAttributeOpInterface",
-        "@llvm-project-master//mlir:Dialect",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:LoopLikeInterface",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:SideEffects",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:TransformUtils",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:DerivedAttributeOpInterface",
+        "@llvm-project//mlir:Dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:LoopLikeInterface",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:SideEffects",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:TransformUtils",
     ],
     alwayslink = 1,
 )
@@ -253,10 +253,10 @@ cc_library(
     deps = [
         ":tensorflow_lite",
         "//tensorflow/compiler/mlir/tensorflow",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
     ],
 )
 
@@ -270,9 +270,9 @@ cc_library(
     ],
     deps = [
         ":tensorflow_lite",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:StandardOps",
     ],
 )
 
@@ -285,10 +285,10 @@ tf_cc_test(
         "//tensorflow/compiler/mlir/tensorflow",
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
     ],
 )
 
@@ -339,14 +339,14 @@ cc_library(
         "//tensorflow/core/platform:logging",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/memory",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:Analysis",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:Transforms",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Transforms",
     ],
     alwayslink = 1,
 )
@@ -365,12 +365,12 @@ cc_library(
         ":validators",
         "//tensorflow/compiler/mlir/lite/quantization:quantization_lib",
         "//tensorflow/compiler/mlir/tensorflow",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:Analysis",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -398,13 +398,13 @@ cc_library(
         "//tensorflow/compiler/mlir/lite/quantization/lite:tfl_to_std",
         "//tensorflow/core:protos_all_cc",
         "@com_google_absl//absl/memory",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:Analysis",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -422,9 +422,9 @@ cc_library(
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
     ],
     alwayslink = 1,
 )
@@ -442,14 +442,14 @@ genrule(
         "ir/tfl_ops.td",
         "ir/tfl_op_interfaces.td",
         "experimental/tfl_hardware_interfaces.td",
-        "@llvm-project-master//mlir:include/mlir/Interfaces/LoopLikeInterface.td",
+        "@llvm-project//mlir:include/mlir/Interfaces/LoopLikeInterface.td",
         "//tensorflow/compiler/mlir/lite/quantization:quantization_td_files",
     ],
     outs = [
         "utils/generated_op_quant_spec_getters.inc",
     ],
     cmd = ("$(location //tensorflow/compiler/mlir/lite/quantization:op_quant_spec_getters_gen) " +
-           "-I external/llvm-project-master/mlir/include " +
+           "-I external/llvm-project/mlir/include " +
            "-I external/org_tensorflow " +
            "$(location //tensorflow/compiler/mlir/lite:ir/tfl_ops.td) " + " -o $@"),
     tools = ["//tensorflow/compiler/mlir/lite/quantization:op_quant_spec_getters_gen"],
@@ -463,7 +463,7 @@ cc_library(
     ],
     deps = [
         ":tensorflow_lite",
-        "@llvm-project-master//mlir:IR",
+        "@llvm-project//mlir:IR",
     ],
     alwayslink = 1,
 )
@@ -474,9 +474,9 @@ tf_native_cc_binary(
         "converter_gen.cc",
     ],
     deps = [
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:tablegen",
-        "@llvm-project-master//mlir:TableGen",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:tablegen",
+        "@llvm-project//mlir:TableGen",
     ],
 )
 
@@ -557,7 +557,7 @@ cc_library(
     ],
     deps = [
         "//tensorflow/lite/core/api",
-        "@llvm-project-master//mlir:IR",
+        "@llvm-project//mlir:IR",
     ],
 )
 
@@ -605,12 +605,12 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
         "@flatbuffers",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:Translation",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Translation",
     ],
 )
 
@@ -627,14 +627,14 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:LoopOpsTransforms",
-        "@llvm-project-master//mlir:MlirTranslateMain",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:StandardOps",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:Translation",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:LoopOpsTransforms",
+        "@llvm-project//mlir:MlirTranslateMain",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:StandardOps",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Translation",
     ],
     alwayslink = 1,
 )
@@ -655,7 +655,7 @@ cc_library(
         "tf_tfl_translate_cl.h",
     ],
     deps = [
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:support",
     ],
     alwayslink = 1,
 )
@@ -667,7 +667,7 @@ cc_library(
     ],
     deps = [
         "//tensorflow/compiler/mlir/lite/quantization:quantization_config",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -699,10 +699,10 @@ tf_cc_binary(
         "//tensorflow/lite/schema:schema_fbs",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:Support",
     ],
 )
 
@@ -721,10 +721,10 @@ tf_cc_binary(
         "//tensorflow/lite/delegates/flex:delegate",
         "//tensorflow/lite/kernels:builtin_ops",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Parser",
-        "@llvm-project-master//mlir:Support",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Parser",
+        "@llvm-project//mlir:Support",
     ],
 )
 
@@ -748,12 +748,12 @@ cc_library(
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_passes",
         "//tensorflow/compiler/mlir/tensorflow:tf_graph_optimization_pass",
         "//tensorflow/compiler/mlir/tensorflow:translate_lib",
-        "@llvm-project-master//mlir:AllPassesAndDialects",
-        "@llvm-project-master//mlir:Analysis",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:QuantOps",
-        "@llvm-project-master//mlir:Transforms",
+        "@llvm-project//mlir:AllPassesAndDialects",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:QuantOps",
+        "@llvm-project//mlir:Transforms",
     ],
 )
 
@@ -782,13 +782,13 @@ cc_library(
         "//tensorflow/lite/tools/optimize:quantize_weights",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:AllPassesAndDialects",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Parser",
-        "@llvm-project-master//mlir:Pass",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:Transforms",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:AllPassesAndDialects",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Parser",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Transforms",
     ],
 )
 
@@ -802,6 +802,6 @@ cc_library(
         "//tensorflow/lite/experimental/mlir:__subpackages__",
     ],
     deps = [
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:support",
     ],
 )

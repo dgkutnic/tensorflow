@@ -20,13 +20,13 @@ limitations under the License.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Support/CommandLine.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
-#include "mlir/IR/Builders.h"  // from @llvm-project-master
-#include "mlir/IR/Identifier.h"  // from @llvm-project-master
-#include "mlir/IR/Location.h"  // from @llvm-project-master
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project-master
-#include "mlir/Pass/Pass.h"  // from @llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
+#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/IR/Identifier.h"  // from @llvm-project
+#include "mlir/IR/Location.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/SymbolTable.h"  // from @llvm-project
+#include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
 
 // The cmd line flag to specify the whitelist of functions. Rest are trimmed

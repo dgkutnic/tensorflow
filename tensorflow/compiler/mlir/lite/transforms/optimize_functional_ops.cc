@@ -17,15 +17,15 @@ limitations under the License.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Support/Casting.h"
-#include "mlir/IR/Attributes.h"  // from @llvm-project-master
-#include "mlir/IR/BlockAndValueMapping.h"  // from @llvm-project-master
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/Module.h"  // from @llvm-project-master
-#include "mlir/IR/PatternMatch.h"  // from @llvm-project-master
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
-#include "mlir/IR/TypeUtilities.h"  // from @llvm-project-master
-#include "mlir/Pass/Pass.h"  // from @llvm-project-master
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project-master
+#include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/BlockAndValueMapping.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/Module.h"  // from @llvm-project
+#include "mlir/IR/PatternMatch.h"  // from @llvm-project
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project
+#include "mlir/IR/TypeUtilities.h"  // from @llvm-project
+#include "mlir/Pass/Pass.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 
 namespace mlir {

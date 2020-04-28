@@ -175,15 +175,15 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/core:lib",
         "//tensorflow/core:stream_executor_no_cuda",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:mc",
-        "@llvm-project-master//llvm:object",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:target",
-        "@llvm-project-master//llvm:x86_code_gen",  # fixdeps: keep
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:mc",
+        "@llvm-project//llvm:object",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:target",
+        "@llvm-project//llvm:x86_code_gen",  # fixdeps: keep
     ] + select({
         "//tensorflow:linux_ppc64le": [
-            "@llvm-project-master//llvm:powerpc_code_gen",  # fixdeps: keep
+            "@llvm-project//llvm:powerpc_code_gen",  # fixdeps: keep
         ],
         "//conditions:default": [
         ],
@@ -215,12 +215,12 @@ cc_library(
         ":runtime_single_threaded_fft",
         ":runtime_single_threaded_matmul",
         "@com_google_absl//absl/memory",
-        "@llvm-project-master//llvm:execution_engine",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:mc",  # fixdeps: keep
-        "@llvm-project-master//llvm:orc_jit",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:target",  # fixdeps: keep
+        "@llvm-project//llvm:execution_engine",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:mc",  # fixdeps: keep
+        "@llvm-project//llvm:orc_jit",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:target",  # fixdeps: keep
         "//tensorflow/compiler/xla/service:custom_call_target_registry",
         "//tensorflow/compiler/xla:types",
         "//tensorflow/compiler/xla:util",
@@ -285,7 +285,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:orc_jit",
+        "@llvm-project//llvm:orc_jit",
     ],
 )
 
@@ -343,10 +343,10 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:code_gen",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:target",
+        "@llvm-project//llvm:code_gen",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:target",
     ],
 )
 
@@ -360,8 +360,8 @@ cc_library(
         "//tensorflow/compiler/xla:shape_util",
         "//tensorflow/core:lib",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@llvm-project-master//llvm:analysis",
-        "@llvm-project-master//llvm:target",
+        "@llvm-project//llvm:analysis",
+        "@llvm-project//llvm:target",
     ],
 )
 
@@ -390,7 +390,7 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -406,7 +406,7 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:loop_emitter",
         "//tensorflow/core:lib",
         "@com_google_absl//absl/strings:str_format",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -422,7 +422,7 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:kernel_support_library",
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/core:lib",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -453,7 +453,7 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/core:lib",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -491,13 +491,13 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/core:lib",
         "@com_google_absl//absl/memory",
-        "@llvm-project-master//llvm:analysis",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:ipo",
-        "@llvm-project-master//llvm:mc",
-        "@llvm-project-master//llvm:object",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:target",
+        "@llvm-project//llvm:analysis",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:ipo",
+        "@llvm-project//llvm:mc",
+        "@llvm-project//llvm:object",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:target",
     ],
 )
 
@@ -555,8 +555,8 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/compiler/xla/service/llvm_ir:math_ops",
         "//tensorflow/core:lib",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:transform_utils",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:transform_utils",
     ],
 )
 
@@ -824,7 +824,7 @@ cc_library(
         "//tensorflow/compiler/xla:shape_util",
         "//tensorflow/compiler/xla:window_util",
         "//tensorflow/compiler/xla/service:hlo",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -1000,7 +1000,7 @@ cc_library(
     hdrs = ["orc_jit_memory_mapper.h"],
     deps = [
         "//tensorflow/core:lib",
-        "@llvm-project-master//llvm:execution_engine",
+        "@llvm-project//llvm:execution_engine",
     ],
 )
 
@@ -1017,8 +1017,8 @@ cc_library(
         "//tensorflow/core:lib",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -1045,8 +1045,8 @@ tf_cc_test(
         "//tensorflow/compiler/xla:test",
         "//tensorflow/compiler/xla/tests:hlo_test_base",
         "//tensorflow/compiler/xla/tests:xla_internal_test_main",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//llvm:target",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
+        "@llvm-project//llvm:target",
     ],
 )

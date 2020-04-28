@@ -18,9 +18,9 @@ limitations under the License.
 
 #include <memory>
 
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project-master
-#include "mlir/IR/PatternMatch.h"  // from @llvm-project-master
-#include "mlir/Transforms/DialectConversion.h"  // from @llvm-project-master
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
+#include "mlir/IR/PatternMatch.h"  // from @llvm-project
+#include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
 
 namespace mlir {
 namespace xla_hlo {

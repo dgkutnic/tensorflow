@@ -52,10 +52,10 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/xla/transforms/buffer_assignment.h"
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // TF:llvm-project-master
-#include "mlir/IR/Function.h"                 // TF:llvm-project-master
-#include "mlir/IR/Operation.h"                // TF:llvm-project-master
-#include "mlir/Pass/Pass.h"                   // TF:llvm-project-master
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // TF:llvm-project
+#include "mlir/IR/Function.h"                 // TF:llvm-project
+#include "mlir/IR/Operation.h"                // TF:llvm-project
+#include "mlir/Pass/Pass.h"                   // TF:llvm-project
 #include "absl/memory/memory.h"
 
 namespace mlir {

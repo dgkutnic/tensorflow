@@ -25,6 +25,6 @@ def tf_saved_model_test(name, data, tags = None):
     lit_test(
         name = name + ".py",
         data = [name] + data,
-        driver = "@llvm-project-master//mlir:run_lit.sh",
+        driver = "@llvm-project//mlir:run_lit.sh",
         tags = tags,
     )

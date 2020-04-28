@@ -4,7 +4,7 @@ package(licenses = ["notice"])
 
 glob_lit_tests(
     data = [":test_utilities"],
-    driver = "@llvm-project-master//mlir:run_lit.sh",
+    driver = "@llvm-project//mlir:run_lit.sh",
     tags_override = {
         "legalize-tf.mlir": ["no_rocm"],
         "optimize.mlir": ["no_rocm"],
@@ -19,7 +19,7 @@ filegroup(
     testonly = True,
     data = [
         "//tensorflow/compiler/mlir:tf-opt",
-        "@llvm-project-master//llvm:FileCheck",
-        "@llvm-project-master//llvm:not",
+        "@llvm-project//llvm:FileCheck",
+        "@llvm-project//llvm:not",
     ],
 )

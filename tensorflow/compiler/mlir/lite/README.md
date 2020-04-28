@@ -1,4 +1,4 @@
-# The new [MLIR](https://github.com/llvm/llvm-project-master/tree/master/mlir) based
+# The new [MLIR](https://github.com/llvm/llvm-project/tree/master/mlir) based
 TensorFlow to TensorFlow Lite converter
 
 This directory contains:

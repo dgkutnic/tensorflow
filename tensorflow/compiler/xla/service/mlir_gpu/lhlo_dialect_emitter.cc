@@ -17,14 +17,14 @@ limitations under the License.
 
 #include <utility>
 
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"  // from @llvm-project-master
-#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project-master
-#include "mlir/IR/Attributes.h"  // from @llvm-project-master
-#include "mlir/IR/Builders.h"  // from @llvm-project-master
-#include "mlir/IR/Function.h"  // from @llvm-project-master
-#include "mlir/IR/Identifier.h"  // from @llvm-project-master
-#include "mlir/IR/StandardTypes.h"  // from @llvm-project-master
-#include "mlir/IR/Types.h"  // from @llvm-project-master
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"  // from @llvm-project
+#include "mlir/Dialect/StandardOps/IR/Ops.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/IR/Function.h"  // from @llvm-project
+#include "mlir/IR/Identifier.h"  // from @llvm-project
+#include "mlir/IR/StandardTypes.h"  // from @llvm-project
+#include "mlir/IR/Types.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/xla/hlo_utils.h"
 #include "tensorflow/compiler/mlir/xla/ir/lhlo_ops.h"
 #include "tensorflow/compiler/xla/service/gpu/thunk.h"

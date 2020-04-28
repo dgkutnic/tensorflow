@@ -205,7 +205,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -219,8 +219,8 @@ cc_library(
         "//tensorflow/core:lib",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -309,8 +309,8 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -328,7 +328,7 @@ cc_library(
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
         "//tensorflow/compiler/xla/service/llvm_ir:loop_emitter",
         "//tensorflow/core:lib",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -357,8 +357,8 @@ cc_library(
         "//tensorflow/core:lib",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:core",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -645,7 +645,7 @@ cc_library(
         "//tensorflow/core:stream_executor_no_cuda",
         "//tensorflow/stream_executor:device_description",
         "@com_google_absl//absl/algorithm:container",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 
@@ -1130,7 +1130,7 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/core:stream_executor_no_cuda",
         "@com_google_absl//absl/memory",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
     alwayslink = True,  # Contains per-platform transfer manager registration
 )
@@ -1231,7 +1231,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@llvm-project-master//llvm:core",
+        "@llvm-project//llvm:core",
     ],
 )
 

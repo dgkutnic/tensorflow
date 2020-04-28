@@ -6,7 +6,7 @@ load("//tensorflow:tensorflow.bzl", "tf_cc_binary")
 package(
     default_visibility = [
         "//tensorflow/compiler/tf2xla:__subpackages__",
-        "@llvm-project-master//mlir:friends",
+        "@llvm-project//mlir:friends",
     ],
     licenses = ["notice"],  # Apache 2.0
 )
@@ -30,8 +30,8 @@ cc_library(
     hdrs = ["op_or_arg_name_mapper.h"],
     deps = [
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
     ],
 )
 
@@ -59,8 +59,8 @@ cc_library(
         "//tensorflow/python:__subpackages__",
     ],
     deps = [
-        "@llvm-project-master//mlir:Affine",
-        "@llvm-project-master//mlir:QuantOps",
+        "@llvm-project//mlir:Affine",
+        "@llvm-project//mlir:QuantOps",
         # Link jit lib to link JIT devices required to run
         # xla-legalize-tf-with-tf2xla pass.
         "//tensorflow/compiler/jit",
@@ -86,7 +86,7 @@ cc_library(
     hdrs = ["init_mlir.h"],
     deps = [
         "//tensorflow/core:lib",
-        "@llvm-project-master//llvm:support",
+        "@llvm-project//llvm:support",
     ],
 )
 
@@ -102,9 +102,9 @@ cc_library(
         "//tensorflow/compiler/mlir/tensorflow:mlir_roundtrip_flags",
         "//tensorflow/core:core_cpu",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:StandardOps",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:StandardOps",
     ],
     alwayslink = 1,
 )
@@ -154,11 +154,11 @@ tf_cc_binary(
         "//tensorflow/core:tensorflow",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/strings",
-        "@llvm-project-master//llvm:support",
-        "@llvm-project-master//mlir:AllPassesAndDialects",
-        "@llvm-project-master//mlir:IR",
-        "@llvm-project-master//mlir:Support",
-        "@llvm-project-master//mlir:Translation",
+        "@llvm-project//llvm:support",
+        "@llvm-project//mlir:AllPassesAndDialects",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Translation",
     ],
 )
 

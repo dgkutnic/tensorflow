@@ -15,10 +15,10 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/tensorflow/transforms/graph_optimization_pass.h"
 
-#include "mlir/IR/Module.h"  // from @llvm-project-master
-#include "mlir/Pass/PassManager.h"  // from @llvm-project-master
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project-master
-#include "mlir/Transforms/Passes.h"  // from @llvm-project-master
+#include "mlir/IR/Module.h"  // from @llvm-project
+#include "mlir/Pass/PassManager.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
+#include "mlir/Transforms/Passes.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/transforms/passes.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/error_util.h"
 

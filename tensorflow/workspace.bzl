@@ -667,7 +667,7 @@ def tf_repositories(path_prefix = "", tf_repo_name = ""):
         "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
     ]
     tf_http_archive(
-        name = "llvm-project-master",
+        name = "llvm-project",
         sha256 = LLVM_SHA256,
         strip_prefix = "llvm-project-" + LLVM_COMMIT,
         urls = LLVM_URLS,
