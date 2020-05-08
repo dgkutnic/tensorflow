@@ -130,10 +130,11 @@ std::unique_ptr<Program> makeProgram(const std::string& name, const std::vector<
 
 // Translate HLO Module to EDSL
 std::unique_ptr<Program> PlaidMLCompiler::ProgramFromHloModule (
-    HloModule* hlo_module) {
+    std::unique_ptr<HloModule> hlo_module) {
 
   VLOG(1) << "ProgramFromHloModule begin";
 
+  /*
   for (auto* computation : hlo_module->computations()) {
     for (auto* instruction : computation->instructions()) {
       switch (instruction->opcode()) {
@@ -171,6 +172,7 @@ std::unique_ptr<Program> PlaidMLCompiler::ProgramFromHloModule (
       }
     }
   }
+  */
 
   auto A = Placeholder(DType::FLOAT32, {8, 16});
   auto B = Placeholder(DType::FLOAT32, {16, 32});
@@ -197,7 +199,7 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
   evaluator->set_custom_call_handler(HandleEvaluatorCustomCall);
   
 
-  auto program = ProgramFromHloModule(hlo_module.get());
+  auto program = ProgramFromHloModule(std::move(hlo_module));
 
   // Create executable from the PlaidML Program.
   

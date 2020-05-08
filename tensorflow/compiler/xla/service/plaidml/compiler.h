@@ -52,7 +52,7 @@ class PlaidMLCompiler : public Compiler {
   ~PlaidMLCompiler() {}
 
   std::unique_ptr<Program> ProgramFromHloModule (
-      HloModule* hlo_module);
+      std::unique_ptr<HloModule> hlo_module);
 
   StatusOr<std::unique_ptr<HloModule>> RunHloPasses(
       std::unique_ptr<HloModule> hlo_module, se::StreamExecutor* stream_exec,
