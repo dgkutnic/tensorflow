@@ -31,7 +31,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_pass_fix.h"
 #include "tensorflow/compiler/xla/service/hlo_pass_pipeline.h"
 #include "tensorflow/compiler/xla/service/hlo_subcomputation_unification.h"
-//#include "tensorflow/compiler/xla/service/plaidml/executable.h"
+#include "tensorflow/compiler/xla/service/plaidml/executable.h"
 #include "tensorflow/compiler/xla/service/layout_assignment.h"
 #include "tensorflow/compiler/xla/service/map_inliner.h"
 #include "tensorflow/compiler/xla/service/reshape_mover.h"
@@ -41,6 +41,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/types.h"
 #include "plaidml/edsl/edsl.h"
+#include "plaidml/op/op.h"
+#include "plaidml/exec/exec.h"
 
 using ::plaidml::edsl::Placeholder;
 using ::plaidml::edsl::Program;
@@ -119,15 +121,18 @@ Tensor Dot(const Tensor& X, const Tensor& Y) {
   return R;
 }
 
-Program makeProgram(const std::string& name, const std::vector<Tensor>& outputs) {
-  auto program = ProgramBuilder(name, outputs).compile();
+std::unique_ptr<Program> makeProgram(const std::string& name, const std::vector<Tensor>& outputs) {
+  //auto program = ProgramBuilder(name, outputs).compile();
+  auto program = absl::make_unique<Program>(ProgramBuilder(name, outputs));
   std::cout << program << std::endl;
-  return program;
+  return std::move(program);
 }
 
 // Translate HLO Module to EDSL
-Program PlaidMLCompiler::ProgramFromHloModule (
+std::unique_ptr<Program> PlaidMLCompiler::ProgramFromHloModule (
     HloModule* hlo_module) {
+
+  VLOG(1) << "ProgramFromHloModule begin";
 
   for (auto* computation : hlo_module->computations()) {
     for (auto* instruction : computation->instructions()) {
@@ -171,7 +176,7 @@ Program PlaidMLCompiler::ProgramFromHloModule (
   auto B = Placeholder(DType::FLOAT32, {16, 32});
   auto C = Dot(A, B);
   auto program = makeProgram("dot", {C});
-  return program;
+  return std::move(program);
 }
 
 //StatusOr<std::unique_ptr<xla::plaidml::PlaidMLExecutable>> PlaidMLCompiler::RunBackend(
@@ -182,7 +187,7 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
 
   VLOG(1) << "Run backend PLAIDML " << hlo_module->name();
 
-  /*
+  
   TF_ASSIGN_OR_RETURN(DynamicDimensionInference dynamic_dimension_inference,
                       DynamicDimensionInference::Run(hlo_module.get()));
 
@@ -190,11 +195,12 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
   evaluator->set_use_fast_path(
       hlo_module->config().debug_options().xla_hlo_evaluator_use_fast_path());
   evaluator->set_custom_call_handler(HandleEvaluatorCustomCall);
-  */
+  
 
-  auto plaidml_program = ProgramFromHloModule(hlo_module.get());
+  auto program = ProgramFromHloModule(hlo_module.get());
 
   // Create executable from the PlaidML Program.
+  
   /*
   std::unique_ptr<Executable> executable =
       absl::make_unique<Executable>(
@@ -202,7 +208,12 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
           std::move(dynamic_dimension_inference));
   */
 
-  //return std::move(executable);
+  std::unique_ptr<Executable> executable =
+      absl::make_unique<PlaidMLExecutable>(
+          std::move(hlo_module), std::move(evaluator), std::move(program),
+          std::move(dynamic_dimension_inference));
+
+  return std::move(executable);
 }
 
 //StatusOr<std::vector<std::unique_ptr<xla::plaidml::PlaidMLExecutable>>> PlaidMLCompiler::Compile(

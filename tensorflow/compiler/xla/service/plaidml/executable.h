@@ -36,8 +36,18 @@ limitations under the License.
 #include "tensorflow/core/platform/stream_executor_no_cuda.h"
 #include "tensorflow/core/platform/types.h"
 #include "plaidml/edsl/edsl.h"
+#include "plaidml/op/op.h"
+#include "plaidml/exec/exec.h"
 
+using ::plaidml::edsl::Placeholder;
 using ::plaidml::edsl::Program;
+using ::plaidml::edsl::ProgramBuilder;
+using ::plaidml::edsl::Tensor;
+using ::plaidml::edsl::TensorDim;
+using ::plaidml::edsl::TensorIndex;
+using ::plaidml::edsl::TensorOutput;
+
+using ::plaidml::DType;
 
 namespace xla {
 namespace plaidml {
@@ -47,11 +57,14 @@ namespace plaidml {
 class PlaidMLExecutable : public PlaidMLExecutableBase {
  public:
   PlaidMLExecutable(
-      std::unique_ptr<Program> plaidml_program,
+      std::unique_ptr<HloModule> hlo_module,
       std::unique_ptr<HloEvaluator> evaluator,
+      std::unique_ptr<Program> plaidml_program,
       absl::optional<DynamicDimensionInference> dynamic_dymension_inference);
 
   static int64 ShapeSizeBytes(const Shape& shape);
+
+  std::unique_ptr<Program> plaidml_program_;
 
  protected:
   StatusOr<Literal> Evaluate(const HloComputation& computation,

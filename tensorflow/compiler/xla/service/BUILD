@@ -817,6 +817,8 @@ cc_library(
     srcs = ["service.cc"],
     hdrs = ["service.h"],
     deps = [
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml:platform_id",
         ":allocation_tracker",
         ":backend",
         ":channel_tracker",

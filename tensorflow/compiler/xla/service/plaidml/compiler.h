@@ -32,6 +32,8 @@ limitations under the License.
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/stream_executor/stream_executor.h"
 #include "plaidml/edsl/edsl.h"
+#include "plaidml/exec/exec.h"
+#include "plaidml/op/op.h"
 
 using ::plaidml::edsl::Program;
 
@@ -42,10 +44,14 @@ class PlaidMLCompiler : public Compiler {
  public:
   PlaidMLCompiler() {
     VLOG(1) << "Initializing PlaidMLCompiler";
+    ::plaidml::init();
+    ::plaidml::edsl::init();
+    ::plaidml::op::init();
+    ::plaidml::exec::init();
   }
   ~PlaidMLCompiler() {}
 
-  Program ProgramFromHloModule (
+  std::unique_ptr<Program> ProgramFromHloModule (
       HloModule* hlo_module);
 
   StatusOr<std::unique_ptr<HloModule>> RunHloPasses(

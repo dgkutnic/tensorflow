@@ -29,12 +29,14 @@ limitations under the License.
 #include "tensorflow/stream_executor/platform.h"
 #include "tensorflow/stream_executor/stream.h"
 #include "tensorflow/stream_executor/stream_executor_pimpl.h"
-#include "plaidml/edsl/edsl.h"
-
-using ::plaidml::edsl::Program;
 
 namespace xla {
 namespace plaidml {
+
+PlaidMLExecutableBase::PlaidMLExecutableBase(
+    std::unique_ptr<HloModule> hlo_module)
+    : Executable(std::move(hlo_module), /*hlo_profile_printer_data=*/nullptr,
+                 /*hlo_profile_index_map=*/nullptr) {}
 
 StatusOr<ExecutionOutput> PlaidMLExecutableBase::ExecuteAsyncOnStream(
     const ServiceExecutableRunOptions* run_options,
@@ -60,19 +62,13 @@ StatusOr<ExecutionOutput> PlaidMLExecutableBase::ExecuteAsyncOnStream(
     }
   }
 
-  /*
   VLOG(1) << "Execute " << module().name();
   if (VLOG_IS_ON(2)) {
     for (const auto& a : argument_buffers) {
       VLOG(2) << "-- argument " << a;
     }
   }
-  */
- 
- VLOG(1) << "Executing via PlaidML";
 
-
-  /*
   uint64 start_micros = tensorflow::Env::Default()->NowMicros();
 
   const HloComputation* computation = module().entry_computation();
@@ -135,7 +131,6 @@ StatusOr<ExecutionOutput> PlaidMLExecutableBase::ExecuteAsyncOnStream(
     }
   }
   return std::move(result);
-  */
 }
 
 }  // namespace plaidml

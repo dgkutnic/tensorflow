@@ -27,7 +27,7 @@ cc_library(
     srcs = ["compiler.cc"],
     hdrs = ["compiler.h"],
     deps = [
-        #":executable",
+        ":executable",
         ":platform_id",
         "//tensorflow/compiler/xla:status",
         "//tensorflow/compiler/xla:status_macros",
@@ -57,8 +57,9 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/stream_executor",
         "@com_google_absl//absl/memory",
-        #"@com_intel_plaidml//:edsl_static",
         "@com_intel_plaidml//plaidml/edsl:edsl",
+        "@com_intel_plaidml//plaidml/exec:exec",
+        "@com_intel_plaidml//plaidml/op:op",
         #"@com_intel_plaidml//pmlc/dialect/tile:tile",
     ],
     #alwayslink = True,  # Contains compiler registration
@@ -75,6 +76,7 @@ cc_library(
     ),
 )
 
+'''
 '''
 
 cc_library(
@@ -98,8 +100,9 @@ cc_library(
         "//tensorflow/stream_executor:stream",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/types:optional",
-        "@com_intel_plaidml//:edsl_static",
-        #"@com_intel_plaidml//plaidml/edsl:edsl",
+        "@com_intel_plaidml//plaidml/edsl:edsl",
+        "@com_intel_plaidml//plaidml/exec:exec",
+        "@com_intel_plaidml//plaidml/op:op",
     ],
 )
 
@@ -132,11 +135,13 @@ cc_library(
         "//tensorflow/core/platform:types",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/types:span",
-        "@com_intel_plaidml//:edsl_static",
         "@com_intel_plaidml//plaidml/edsl:edsl",
+        "@com_intel_plaidml//plaidml/exec:exec",
+        "@com_intel_plaidml//plaidml/op:op",
     ],
 )
 
+'''
 '''
 
 cc_library(

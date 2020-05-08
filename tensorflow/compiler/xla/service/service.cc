@@ -59,6 +59,8 @@ limitations under the License.
 #include "tensorflow/core/util/ptr_util.h"
 #include "tensorflow/stream_executor/device_memory_allocator.h"
 
+#include "tensorflow/compiler/xla/service/plaidml/compiler.h"
+
 namespace xla {
 namespace {
 
@@ -386,6 +388,15 @@ StatusOr<std::vector<std::unique_ptr<Executable>>> Service::BuildExecutables(
     const HloModuleProto* proto = module_protos[i];
     const HloModuleConfig& config = *module_configs[i];
     TF_ASSIGN_OR_RETURN(auto module, CreateModuleFromProto(*proto, config));
+
+    VLOG(1) << "Creating the PlaidML compiler";
+    // add plaidml executable here
+    plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
+
+    auto e = pmlc->RunBackend(std::move(module), executors.at(0).at(0), device_allocator);
+
+
+    VLOG(1) << "Dumping the HLO module";
     DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
     module_group->push_back(std::move(module));
   }
@@ -810,6 +821,13 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
 
   TF_ASSIGN_OR_RETURN(std::unique_ptr<HloModule> module,
                       CreateModuleFromProto(module_proto, *module_config));
+
+  VLOG(1) << "Creating the PlaidML compiler";
+  // add plaidml executable here
+  plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
+
+  pmlc->RunBackend(std::move(module), executor, device_allocator);
+
   DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
 
   TF_ASSIGN_OR_RETURN(

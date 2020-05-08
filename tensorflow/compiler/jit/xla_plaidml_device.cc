@@ -91,16 +91,6 @@ Status XlaPlaidMLDeviceFactory::CreateDevices(
   options.use_multiple_streams = false;
   auto device = absl::make_unique<XlaDevice>(session_options, options);
 
-  // Setting GpuDeviceInfo because eager runtime relies on the device
-  // context in tensorflow_gpu_device_info(). Also,
-  // tensorflow_gpu_device_info() == nullptr is used as an IsPLAIDML test.
-  // We need XlaPlaidMLDevice to be treated not as PLAIDML because it allocates
-  // XlaTensors, not regular Tensors.
-  Status status = device->UseGpuDeviceInfo();
-  if (!status.ok()) {
-    errors::AppendToMessage(&status, "while setting up ", DEVICE_GPU_XLA_JIT);
-    return status;
-  }
   devices->push_back(std::move(device));
   return Status::OK();
 }
