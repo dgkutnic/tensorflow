@@ -17,6 +17,7 @@ limitations under the License.
 #define TENSORFLOW_COMPILER_XLA_SERVICE_PLAIDML_COMPILER_H_
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "tensorflow/compiler/xla/service/compiler.h"
@@ -51,7 +52,37 @@ class PlaidMLCompiler : public Compiler {
   }
   ~PlaidMLCompiler() {}
 
-  std::unique_ptr<Program> ProgramFromHloModule (
+  std::unordered_map<xla::HloComputation*, std::string> function_map_;
+  std::unordered_map<xla::PrimitiveType, std::string> cpp_dtype_map_ = {
+    {xla::PRED, "bool"},
+    {xla::S8, "int8_t"},
+    {xla::S16, "int16_t"},
+    {xla::S32, "int32_t"},
+    {xla::S64, "int64_t"},
+    {xla::U8, "uint8_t"},
+    {xla::U16, "uint16_t"},
+    {xla::U32, "uint32_t"},
+    {xla::U64, "uint64_t"},
+    {xla::F32, "float"},
+    {xla::F64, "double"}
+  };
+  std::unordered_map<xla::PrimitiveType, std::string> pml_dtype_map_ = {
+    {xla::PRED, "DType::BOOLEAN"},
+    {xla::S8, "DType::INT8"},
+    {xla::S16, "DType::INT16"},
+    {xla::S32, "DType::INT32"},
+    {xla::S64, "DType::INT64"},
+    {xla::U8, "DType::UINT8"},
+    {xla::U16, "DType::UINT16"},
+    {xla::U32, "DType::UINT32"},
+    {xla::U64, "DType::UINT64"},
+    {xla::F32, "DType::FLOAT32"},
+    {xla::F64, "DType::FLOAT32"}
+  };
+
+  std::string HumanString(const Shape& shape);
+
+  StatusOr<std::unique_ptr<Program>> ProgramFromHloModule (
       std::unique_ptr<HloModule> hlo_module);
 
   StatusOr<std::unique_ptr<HloModule>> RunHloPasses(
@@ -74,6 +105,21 @@ class PlaidMLCompiler : public Compiler {
   HloCostAnalysis::ShapeSizeFunction ShapeSizeBytesFunction() const;
 
   se::Platform::Id PlatformId() const;
+
+  std::string DEVICE_ID = "llvm_cpu.0";
+
+  const std::vector<char> translator_dictionary = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
+
+  std::string legalize_ids(int32_t id) {
+    std::string legalized_id = "";
+    int32_t ic = id;
+    do {
+      int32_t i = ic % 10;
+      legalized_id = translator_dictionary[i] + legalized_id;
+      ic /= 10;
+    } while (ic > 0);
+    return legalized_id;
+  }
 
  private:
   Status RunHloOptimization(HloModule* hlo_module);

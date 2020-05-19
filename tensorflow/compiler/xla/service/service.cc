@@ -389,12 +389,15 @@ StatusOr<std::vector<std::unique_ptr<Executable>>> Service::BuildExecutables(
     const HloModuleConfig& config = *module_configs[i];
     TF_ASSIGN_OR_RETURN(auto module, CreateModuleFromProto(*proto, config));
 
+    // wait until entire module group is created
+    /*
     VLOG(1) << "Creating the PlaidML compiler";
     // add plaidml executable here
     plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
 
     auto e = pmlc->RunBackend(std::move(module), executors.at(0).at(0), device_allocator);
 
+    */
 
     VLOG(1) << "Dumping the HLO module";
     DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
@@ -402,9 +405,17 @@ StatusOr<std::vector<std::unique_ptr<Executable>>> Service::BuildExecutables(
   }
 
   TF_ASSIGN_OR_RETURN(
+    std::vector<std::unique_ptr<Executable>> executables,
+    plaidml::PlaidMLCompiler().Compile(std::move(module_group),
+                                       std::move(executors), device_allocator));
+
+  /*
+  TF_ASSIGN_OR_RETURN(
       std::vector<std::unique_ptr<Executable>> executables,
       backend->compiler()->Compile(std::move(module_group),
                                    std::move(executors), device_allocator));
+  */
+  
 
   for (size_t i = 0; i < module_protos.size(); ++i) {
     const auto& debug_opts = module_configs[i]->debug_options();
@@ -826,10 +837,16 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
   // add plaidml executable here
   plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
 
-  pmlc->RunBackend(std::move(module), executor, device_allocator);
+  TF_ASSIGN_OR_RETURN(std::unique_ptr<Executable> executable, pmlc->RunBackend(std::move(module), executor, device_allocator));
 
-  DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
+  //auto e = pmlc->RunBackend(std::move(module), executor, device_allocator);
 
+  VLOG(1) << "Finish creating the PlaidML Compiler";
+
+  VLOG(1) << "Dumping HLO Module";
+  //DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
+
+  /*
   TF_ASSIGN_OR_RETURN(
       module, backend->compiler()->RunHloPasses(std::move(module), executor,
                                                 device_allocator));
@@ -837,7 +854,9 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
   TF_ASSIGN_OR_RETURN(std::unique_ptr<Executable> executable,
                       backend->compiler()->RunBackend(
                           std::move(module), executor, device_allocator));
+  */
 
+  /*
   const auto& debug_opts = module_config->debug_options();
   if (DumpingEnabledForHloModule(module_proto.name(), debug_opts) &&
       debug_opts.xla_dump_hlo_snapshots()) {
@@ -845,6 +864,7 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
     *hlo_proto->mutable_hlo_module() = module_proto;
     executable->set_hlo_proto(std::move(hlo_proto));
   }
+  */
 
   return std::move(executable);
 }

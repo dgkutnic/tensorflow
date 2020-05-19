@@ -46,10 +46,12 @@ PlaidMLExecutable::PlaidMLExecutable(
     : PlaidMLExecutableBase(std::move(hlo_module)),
       evaluator_(std::move(evaluator)),
       dynamic_dimension_inference_(std::move(dynamic_dymension_inference)), plaidml_program_(std::move(plaidml_program)) {
+  VLOG(1) << "PlaidMLExecutable creation";
   if (dynamic_dimension_inference_.has_value()) {
     evaluator_->set_dynamic_dimension_inference(
         &dynamic_dimension_inference_.value());
   }
+  VLOG(1) << "PlaidMLExecutable created";
 }
 
 StatusOr<Literal> PlaidMLExecutable::Evaluate(

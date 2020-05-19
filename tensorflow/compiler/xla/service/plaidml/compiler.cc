@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <string>
 #include <utility>
+#include <unordered_map>
 
 #include "absl/memory/memory.h"
 #include "tensorflow/compiler/xla/service/algebraic_simplifier.h"
@@ -28,6 +29,8 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_constant_folding.h"
 #include "tensorflow/compiler/xla/service/hlo_cse.h"
 #include "tensorflow/compiler/xla/service/hlo_dce.h"
+#include "tensorflow/compiler/xla/service/hlo_instruction.h"
+#include "tensorflow/compiler/xla/service/hlo_opcode.h"
 #include "tensorflow/compiler/xla/service/hlo_pass_fix.h"
 #include "tensorflow/compiler/xla/service/hlo_pass_pipeline.h"
 #include "tensorflow/compiler/xla/service/hlo_subcomputation_unification.h"
@@ -51,6 +54,7 @@ using ::plaidml::edsl::Tensor;
 using ::plaidml::edsl::TensorDim;
 using ::plaidml::edsl::TensorIndex;
 using ::plaidml::edsl::TensorOutput;
+using ::plaidml::edsl::Value;
 
 using ::plaidml::DType;
 
@@ -92,13 +96,16 @@ StatusOr<Literal> HandleEvaluatorCustomCall(
 Status PlaidMLCompiler::RunHloOptimization(HloModule* hlo_module) {
   HloPassPipeline pipeline("PlaidML");
 
+  /*
   pipeline.AddPass<DynamicIndexSplitter>();
   pipeline.AddPass<CholeskyExpander>();
   pipeline.AddPass<TriangularSolveExpander>();
   pipeline.AddPass<LayoutAssignment>(
       hlo_module->mutable_entry_computation_layout(),
       LayoutAssignment::InstructionCanChangeLayout);
-
+  */
+  pipeline.AddPass<FlattenCallGraph>();
+  pipeline.AddPass<WhileLoopSimplifier>();
   return pipeline.Run(hlo_module).status();
 }
 
@@ -110,7 +117,7 @@ StatusOr<std::unique_ptr<HloModule>> PlaidMLCompiler::RunHloPasses(
   return std::move(hlo_module);
 }
 
-// Remove after testing
+// TODO: Remove after testing
 Tensor Dot(const Tensor& X, const Tensor& Y) {
   TensorDim I, J, K;
   TensorIndex i("i"), j("j"), k("k");
@@ -123,22 +130,95 @@ Tensor Dot(const Tensor& X, const Tensor& Y) {
 
 std::unique_ptr<Program> makeProgram(const std::string& name, const std::vector<Tensor>& outputs) {
   //auto program = ProgramBuilder(name, outputs).compile();
+  VLOG(1) << "makeProgram begin";
   auto program = absl::make_unique<Program>(ProgramBuilder(name, outputs));
-  std::cout << program << std::endl;
+  //std::cout << *program << std::endl;
+  VLOG(1) << "Generated program:\n" << (*program).str();
   return std::move(program);
 }
 
+/* static */ std::string PlaidMLCompiler::HumanString(const Shape& shape) {
+  if (shape.IsTuple()) {
+    string text = "{";
+    const char* prefix = "";
+    for (const Shape& elem_shape : shape.tuple_shapes()) {
+      absl::StrAppend(&text, prefix, HumanString(elem_shape));
+      prefix = ", ";
+    }
+    text += "}";
+    return text;
+  }
+  std::vector<std::string> dim_elements;
+  for (int i = 0; i < shape.dimensions_size(); ++i) {
+    if (shape.is_dynamic_dimension(i)) {
+      dim_elements.push_back(absl::StrCat("<=", shape.dimensions(i)));
+    } else {
+      dim_elements.push_back(absl::StrCat(shape.dimensions(i)));
+    }
+  }
+  return absl::StrCat("{", absl::StrJoin(dim_elements, ","), "}");
+}
+
 // Translate HLO Module to EDSL
-std::unique_ptr<Program> PlaidMLCompiler::ProgramFromHloModule (
+StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     std::unique_ptr<HloModule> hlo_module) {
+
+  std::string program_str;
 
   VLOG(1) << "ProgramFromHloModule begin";
 
-  /*
+  VLOG(1) << "result_shape" << hlo_module->result_shape().ToString();
+
+  if (hlo_module->has_entry_computation()) {
+    auto entry_computation = hlo_module->entry_computation();
+    VLOG(1) << "PlaidML Entry Computation: num parameters " << entry_computation->num_parameters() << " returns " << entry_computation->root_instruction()->shape().ToString(); 
+  }
+  
   for (auto* computation : hlo_module->computations()) {
+    VLOG(1) <<  "num parameters " << computation->num_parameters();
     for (auto* instruction : computation->instructions()) {
+      VLOG(2) << xla::HloOpcodeString(instruction->opcode()) << " name " << instruction->name() << " id " << instruction->unique_id() << " num_operands " << instruction->operand_count();
+      VLOG(2) << instruction->OperandsToString(HloPrintOptions());
+      auto instruction_name = instruction->name();
+      std::string unique_name = legalize_ids(instruction->unique_id());
+      auto num_operands = instruction->operand_count();
+      std::vector<std::string> operand_names;
+      for (auto i = 0; i < num_operands; i++) {
+        std::string operand_id = legalize_ids(instruction->operand(i)->unique_id());
+        VLOG(2) << "visiting operand " << operand_id;
+        operand_names.push_back(operand_id);
+      }
+      // result shape
+      auto shape = instruction->shape();
+      auto dims = HumanString(shape);
+      auto type = shape.element_type();
+      std::string type_cpp = cpp_dtype_map_[type];
+      std::string type_plaidml = pml_dtype_map_[type];
+      //TF_ASSIGN_OR_RETURN(std::string type_cpp, XLATypeToCppPrimitive(type));
+      //TF_ASSIGN_OR_RETURN(std::string type_plaidml, XLATypeToDType(type));
+      // TODO: validate that all these general parameters are correct before constructing them into a larger program.
       switch (instruction->opcode()) {
-        // Unary ops.
+        case HloOpcode::kConstant: {
+          // create a constant here
+          program_str += "std::vector<int> shape" + unique_name + " = " + dims + ";\n";
+          program_str += "std::vector<"+ type_cpp + "> " + unique_name + "_vals = " + instruction->OperandsToString(HloPrintOptions()) + ";\n";
+          program_str += "auto buffer" + unique_name + " = makeBuffer(TensorShape(" + type_plaidml + ", shape"  + unique_name + "), " + unique_name + "_vals);\n";
+          program_str += "auto " + unique_name + " = Constant(LogicalShape("+ type_plaidml + ", shape"  + unique_name + "), buffer" + unique_name + ", \"" + unique_name +"\");\n";
+          break;
+        }
+        case HloOpcode::kAdd: {
+          program_str += "auto " + unique_name + " = " + operand_names[0] + " + " + operand_names[1] + ";\n";
+          break;
+        }
+        case HloOpcode::kMultiply: {
+          program_str += "auto " + unique_name + " = " + operand_names[0] + " * " + operand_names[1] + ";\n";
+          break;
+        }
+        case HloOpcode::kTuple: {
+          program_str += "return " + operand_names[0] + "\n";
+          break;
+        }
+        // TODO: Unary ops.
         case HloOpcode::kAbs:
         case HloOpcode::kRoundNearestAfz:
         case HloOpcode::kBitcast:
@@ -165,30 +245,59 @@ std::unique_ptr<Program> PlaidMLCompiler::ProgramFromHloModule (
         case HloOpcode::kSqrt:
         case HloOpcode::kTanh: {
           // Parse operands.
+          program_str += "// unimplemented unary op " + instruction_name  + " has been called here\n";
+          break;
         }
-        // Perhaps add a message here that the op isn't implemented for the plaidml backend (yet)
+        // Binary ops.
+        case HloOpcode::kDivide:
+        case HloOpcode::kSubtract:
+        case HloOpcode::kAtan2:
+        case HloOpcode::kComplex:
+        case HloOpcode::kMaximum:
+        case HloOpcode::kMinimum:
+        case HloOpcode::kPower:
+        case HloOpcode::kRemainder:
+        case HloOpcode::kAnd:
+        case HloOpcode::kOr:
+        case HloOpcode::kXor:
+        case HloOpcode::kShiftLeft:
+        case HloOpcode::kShiftRightArithmetic:
+        case HloOpcode::kShiftRightLogical: {
+          // Parse operands.
+          program_str += "// unimplemented binary op " + instruction_name  + " has been called here\n";
+          break;
+        }
+        // TODO: Perhaps add a message here that the op isn't implemented for the plaidml backend (yet)
         default:
+          program_str += "// unknown op has been called here\n";
           break;
       }
     }
   }
-  */
+  
+  VLOG(1) << "Program string:\n" << program_str;
 
   auto A = Placeholder(DType::FLOAT32, {8, 16});
   auto B = Placeholder(DType::FLOAT32, {16, 32});
   auto C = Dot(A, B);
   auto program = makeProgram("dot", {C});
+  VLOG(1) << "ProgramFromHloModule complete";
   return std::move(program);
 }
 
 //StatusOr<std::unique_ptr<xla::plaidml::PlaidMLExecutable>> PlaidMLCompiler::RunBackend(
 StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
     std::unique_ptr<HloModule> hlo_module, se::StreamExecutor* stream_exec,
-    se::DeviceMemoryAllocator* /*device_allocator*/) {
+    se::DeviceMemoryAllocator* device_allocator) {
   TF_RET_CHECK(stream_exec != nullptr);
 
   VLOG(1) << "Run backend PLAIDML " << hlo_module->name();
 
+  /* TODO: Add passes
+  TF_ASSIGN_OR_RETURN(auto module,
+                      RunHloPasses(std::move(hlo_module), stream_exec,
+                                   device_allocator));
+  */
   
   TF_ASSIGN_OR_RETURN(DynamicDimensionInference dynamic_dimension_inference,
                       DynamicDimensionInference::Run(hlo_module.get()));
@@ -199,7 +308,7 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
   evaluator->set_custom_call_handler(HandleEvaluatorCustomCall);
   
 
-  auto program = ProgramFromHloModule(std::move(hlo_module));
+  TF_ASSIGN_OR_RETURN(auto program, ProgramFromHloModule(std::move(hlo_module)));
 
   // Create executable from the PlaidML Program.
   
@@ -209,6 +318,8 @@ StatusOr<std::unique_ptr<Executable>> PlaidMLCompiler::RunBackend(
           std::move(hlo_module), std::move(evaluator),
           std::move(dynamic_dimension_inference));
   */
+
+  VLOG(1) << "Creating executable from PlaidML Program";
 
   std::unique_ptr<Executable> executable =
       absl::make_unique<PlaidMLExecutable>(
