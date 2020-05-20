@@ -173,14 +173,24 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     auto entry_computation = hlo_module->entry_computation();
     VLOG(1) << "PlaidML Entry Computation " + entry_computation->name() + ": num parameters " << entry_computation->num_parameters() << " returns " << entry_computation->root_instruction()->shape().ToString(); 
   }
+
   std::string tabs = "";
   for (auto* computation : hlo_module->computations()) {
     VLOG(2) << "Computation name" << computation->name() << " num_parameters " << computation->num_parameters() << " returns " << computation->root_instruction()->shape().ToString();
     // TODO: Verify that the computation return type should actuually be Tensor, or Value, or something else...
     // TODO: Add parameters
+    // TODO: Replace periods in computation name with underscores to make it a valid function name
+    auto function_name = legalize_computation_name(computation->name());
     auto root_instr = computation->root_instruction();
     auto root_instr_id = legalize_ids(root_instr->unique_id());
-    program_str += tabs + "Tensor " + computation->name() + "() {\n";
+    auto root_instr_shape = root_instr->shape();
+    std::string return_type;
+    if (root_instr_shape.IsArray()) {
+      return_type = "Tensor";
+    } else {
+      return_type = "Value";
+    }
+    program_str += tabs + return_type + " " + function_name + "() {\n";
     tabs += "  ";
     for (auto* instruction : computation->instructions()) {
       VLOG(2) << xla::HloOpcodeString(instruction->opcode()) << " name " << instruction->name() << " id " << instruction->unique_id() << " num_operands " << instruction->operand_count();
@@ -204,7 +214,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
       switch (instruction->opcode()) {
         case HloOpcode::kConstant: {
           // Create constant buffers, etc.
-          program_str += tabs + "std::vector<int> shape" + unique_name + " = " + dims + ";\n";
+          program_str += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
           program_str += tabs + "std::vector<"+ type_cpp + "> " + unique_name + "_vals = " + instruction->OperandsToString(HloPrintOptions()) + ";\n";
           program_str += tabs + "auto buffer" + unique_name + " = makeBuffer(TensorShape(" + type_plaidml + ", shape"  + unique_name + "), " + unique_name + "_vals);\n";
           program_str += tabs + "auto " + unique_name + " = Constant(LogicalShape("+ type_plaidml + ", shape"  + unique_name + "), buffer" + unique_name + ", \"" + unique_name +"\");\n";
@@ -239,15 +249,15 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           // a kGetTupleElement operation is like taking an element in a Value and interpreting it as a tensor, int, etc.
           // TODO: Handle return type
           auto tindex = std::to_string(instruction->tuple_index());
-          program_str += tabs + "auto " + unique_name + " = " + operand_names[0] + "[" + tindex + "].as_tensor();\n";
+          program_str += tabs + "auto " + unique_name + " = " + operand_names[0] + ".as_tuple()[" + tindex + "].as_tensor();\n";
           break;
         }
         case HloOpcode::kCall: {
           // Call another EDSL function
           auto computation_to_apply = instruction->to_apply();
-          auto computation_name = computation_to_apply->name();
+          auto computation_name = legalize_computation_name(computation_to_apply->name());
           // TODO: check parameters, return types, etc.
-          program_str += tabs + "auto " + unique_name + " = " + computation_name + "()\n";
+          program_str += tabs + "auto " + unique_name + " = " + computation_name + "();\n";
           break;
         }
         // TODO: Unary ops.
@@ -310,7 +320,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     tabs.pop_back();
     program_str += tabs + "}\n";
   }
-  
+ 
+  if (hlo_module->has_entry_computation()) {
+    auto entry_computation_name = legalize_computation_name(hlo_module->entry_computation()->name());
+    program_str += tabs + "auto program_result = " + entry_computation_name + "();\n"; 
+  }
+ 
   VLOG(1) << "Program string:\n" << program_str;
   
   auto A = Placeholder(DType::FLOAT32, {8, 16});

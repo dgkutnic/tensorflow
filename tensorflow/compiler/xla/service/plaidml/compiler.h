@@ -121,6 +121,18 @@ class PlaidMLCompiler : public Compiler {
     return legalized_id;
   }
 
+  std::string legalize_computation_name(const std::string& cname) {
+   std::string result;
+   for (int i = 0; i < cname.size(); i++) {
+      if (cname[i] == '.') {
+        result += "_";
+      } else {
+        result += cname[i];
+      }
+    }
+    return result;
+  }
+
  private:
   Status RunHloOptimization(HloModule* hlo_module);
 
