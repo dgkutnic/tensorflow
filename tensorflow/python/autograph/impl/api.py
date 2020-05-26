@@ -18,21 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-import copy
 import functools
 import inspect
 import os
-import pdb
-import re
 import sys
 import textwrap
 import traceback
 
-# pylint:disable=g-bad-import-order
-
 import six
-# pylint:enable=g-bad-import-order
 
 from tensorflow.python.autograph.core import ag_ctx
 from tensorflow.python.autograph.core import converter
@@ -344,8 +337,16 @@ def _call_unconverted(f, args, kwargs, options, update_cache=True):
 
   if kwargs is not None:
     return f(*args, **kwargs)
-  else:
-    return f(*args)
+  return f(*args)
+
+
+def _is_of_known_loaded_module(f, module_name):
+  mod = sys.modules.get(module_name, None)
+  if mod is None:
+    return False
+  if any(v is not None for v in mod.__dict__.values() if f is v):
+    return True
+  return False
 
 
 def _is_known_loaded_type(f, module_name, entity_name):
@@ -515,7 +516,8 @@ def converted_call(f,
   # Other built-in modules are permanently whitelisted.
   # TODO(mdan): Figure out how to do this consistently for all stdlib modules.
   if any(
-      f in m.__dict__.values() for m in (collections, pdb, copy, inspect, re)):
+      _is_of_known_loaded_module(f, m)
+      for m in ('collections', 'pdb', 'copy', 'inspect', 're')):
     logging.log(2, 'Permanently whitelisted: %s: part of builtin module', f)
     return _call_unconverted(f, args, kwargs, options)
 
@@ -668,7 +670,7 @@ def to_graph(entity, recursive=True, experimental_optional_features=None):
             user_requested=True,
             optional_features=experimental_optional_features),
         autograph_module=tf_inspect.getmodule(to_graph))
-    return conversion.convert(entity, program_ctx)
+    return autograph_artifact(conversion.convert(entity, program_ctx))
   except (ValueError, AttributeError, KeyError, NameError, AssertionError) as e:
     logging.error(1, 'Error converting %s', entity, exc_info=True)
     raise ConversionError('converting {}: {}: {}'.format(

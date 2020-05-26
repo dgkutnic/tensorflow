@@ -1,5 +1,4 @@
 load("//tensorflow/lite:special_rules.bzl", "tflite_portable_test_suite")
-load("//tensorflow:tensorflow.bzl", "tf_cc_binary")
 load("//tensorflow/lite:build_def.bzl", "tflite_copts")
 
 package(
@@ -9,6 +8,8 @@ package(
     licenses = ["notice"],  # Apache 2.0
 )
 
+exports_files(["logging.h"])
+
 common_copts = ["-Wall"]
 
 py_binary(
@@ -16,7 +17,10 @@ py_binary(
     srcs = ["visualize.py"],
     python_version = "PY3",
     srcs_version = "PY2AND3",
-    deps = ["//tensorflow/lite/python:schema_py"],
+    deps = [
+        "//tensorflow/lite/python:schema_py",
+        "//third_party/py/numpy",
+    ],
 )
 
 py_test(
@@ -124,13 +128,12 @@ py_library(
     ],
 )
 
-tf_cc_binary(
+cc_binary(
     name = "generate_op_registrations",
     srcs = ["gen_op_registration_main.cc"],
     deps = [
+        ":command_line_flags",
         ":gen_op_registration",
-        "//tensorflow/core:framework_internal",
-        "//tensorflow/core:lib",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -206,11 +209,36 @@ cc_test(
 )
 
 cc_library(
+    name = "logging",
+    hdrs = ["logging.h"],
+    copts = common_copts,
+)
+
+cc_library(
+    name = "tool_params",
+    srcs = ["tool_params.cc"],
+    hdrs = ["tool_params.h"],
+    copts = tflite_copts(),
+    deps = [":logging"],
+)
+
+cc_test(
+    name = "tool_params_test",
+    srcs = ["tool_params_test.cc"],
+    copts = tflite_copts(),
+    visibility = ["//visibility:private"],
+    deps = [
+        ":tool_params",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "command_line_flags",
     srcs = ["command_line_flags.cc"],
     hdrs = ["command_line_flags.h"],
     copts = tflite_copts(),
-    deps = ["//tensorflow/lite:minimal_logging"],
+    deps = ["//tensorflow/lite/tools:logging"],
 )
 
 cc_test(
@@ -220,8 +248,7 @@ cc_test(
     visibility = ["//visibility:private"],
     deps = [
         ":command_line_flags",
-        "//tensorflow/lite/testing:util",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
