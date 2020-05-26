@@ -323,6 +323,17 @@ class OwnedArgsCallFrame : public CallFrameBase {
     }
   }
 
+  // Since we own the argument tensors in `args_`, we can implement
+  // `ConsumeArg()` for those arguments.
+  void ConsumeArg(int index, Tensor* val) override {
+    DCHECK_GE(index, 0);
+    DCHECK_LT(index, args_.size());
+    *val = std::move(args_[index]);
+  }
+  bool CanConsumeArg(int index) const override {
+    return index >= 0 && index < args_.size();
+  }
+
  private:
   std::vector<Tensor> args_;
   const std::vector<Tensor>* const captured_inputs_;  // Not owned.
@@ -455,17 +466,15 @@ Status FunctionMetadata::Create(
 
   auto attr = fdef->attr().find(FunctionLibraryDefinition::kIntsOnDeviceAttr);
   if (attr != fdef->attr().end() && attr->second.b()) {
-    LOG(WARNING)
-        << "Disabling multi-device execution for a function that uses the "
-        << FunctionLibraryDefinition::kIntsOnDeviceAttr << " attribute.";
+    VLOG(1) << "Disabling multi-device execution for a function that uses the "
+            << FunctionLibraryDefinition::kIntsOnDeviceAttr << " attribute.";
     (*out_metadata)->use_multi_device_function_ = false;
     return Status::OK();
   }
   auto validate_arg = [](const OpDef::ArgDef& arg) {
     if (!arg.number_attr().empty() || !arg.type_list_attr().empty()) {
-      LOG(WARNING) << "Disabling multi-device execution for a function with "
-                      "a vector argument "
-                   << arg.name() << ".";
+      VLOG(1) << "Disabling multi-device execution for a function with "
+              << "a vector argument " << arg.name() << ".";
       return false;
     }
     return true;
@@ -671,20 +680,13 @@ Status InstantiatedCapturedFunction::Run(IteratorContext* ctx,
 
   OwnedArgsCallFrame frame(std::move(args), &captured_func_->captured_inputs(),
                            ret_types_);
-  Notification n;
-  Status s;
   profiler::TraceMe activity(
       [&] {
         return absl::StrCat(
             "InstantiatedCapturedFunction::Run#id=", f_opts.step_id, "#");
       },
       profiler::TraceMeLevel::kInfo);
-  lib_->Run(f_opts, f_handle_, &frame, [&n, &s](const Status& func_status) {
-    s.Update(func_status);
-    n.Notify();
-  });
-  n.WaitForNotification();
-  TF_RETURN_IF_ERROR(s);
+  TF_RETURN_IF_ERROR(lib_->RunSync(std::move(f_opts), f_handle_, &frame));
   return frame.ConsumeRetvals(rets);
 }
 
@@ -709,9 +711,6 @@ Status InstantiatedCapturedFunction::RunWithBorrowedArgs(
 
   BorrowedArgsCallFrame frame(args, &captured_func_->captured_inputs(),
                               ret_types_);
-  Notification n;
-  Status s;
-
   profiler::TraceMe activity(
       [&] {
         return absl::StrCat(
@@ -719,12 +718,7 @@ Status InstantiatedCapturedFunction::RunWithBorrowedArgs(
             f_opts.step_id, "#");
       },
       profiler::TraceMeLevel::kInfo);
-  lib_->Run(f_opts, f_handle_, &frame, [&n, &s](const Status& func_status) {
-    s.Update(func_status);
-    n.Notify();
-  });
-  n.WaitForNotification();
-  TF_RETURN_IF_ERROR(s);
+  TF_RETURN_IF_ERROR(lib_->RunSync(std::move(f_opts), f_handle_, &frame));
   return frame.ConsumeRetvals(rets);
 }
 
@@ -748,21 +742,13 @@ Status InstantiatedCapturedFunction::RunInstantiated(
 
   BorrowedArgsCallFrame frame(args, &captured_func_->captured_inputs(),
                               ret_types_);
-  Notification n;
-  Status s;
-
   profiler::TraceMe activity(
       [&] {
         return absl::StrCat("InstantiatedCapturedFunction::RunInstantiated#id=",
                             f_opts.step_id, "#");
       },
       profiler::TraceMeLevel::kInfo);
-  lib_->Run(f_opts, f_handle_, &frame, [&n, &s](const Status& func_status) {
-    s.Update(func_status);
-    n.Notify();
-  });
-  n.WaitForNotification();
-  TF_RETURN_IF_ERROR(s);
+  TF_RETURN_IF_ERROR(lib_->RunSync(std::move(f_opts), f_handle_, &frame));
   return frame.ConsumeRetvals(rets);
 }
 

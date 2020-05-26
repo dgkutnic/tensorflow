@@ -47,7 +47,7 @@ tf_cuda_library(
     visibility = ["//tensorflow:internal"],
     deps = select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "//tensorflow/core:core_cpu_lib",
@@ -72,17 +72,21 @@ tf_cuda_library(
     deps = [
         ":eager_executor",
         ":kernel_and_device",
+        "@com_google_absl//absl/container:flat_hash_map",
         "//tensorflow/c:tf_tensor_internal",
         "//tensorflow/c/eager:context_interface",
         "//tensorflow/c/eager:tensor_handle_interface",
         "//tensorflow/c/eager:operation_interface",
+        "//tensorflow/c/experimental/saved_model/core:saved_model_api",
+        "//tensorflow/c/experimental/saved_model/core:tf_saved_model_impl",
         "//tensorflow/core/distributed_runtime:rendezvous_mgr_interface",
         "//tensorflow/core/distributed_runtime:worker_env",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
+            "@com_google_absl//absl/types:optional",
             "//tensorflow/core:core_cpu_lib",
             "//tensorflow/core:framework",
             "//tensorflow/core:framework_internal",
@@ -143,7 +147,7 @@ tf_cuda_library(
         "//tensorflow/core/platform:platform_port",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "//tensorflow/core:core_cpu_lib",
@@ -177,7 +181,7 @@ tf_cuda_library(
         ":eager_executor",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "@com_google_absl//absl/types:variant",
@@ -203,7 +207,7 @@ tf_cuda_library(
         ":tensor_handle_data",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "@com_google_absl//absl/strings",
@@ -301,13 +305,14 @@ tf_cuda_library(
     visibility = ["//tensorflow:internal"],
     deps = [
         ":attr_builder",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/types:optional",
         "@farmhash_archive//:farmhash",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//tensorflow:windows": KERNEL_AND_DEVICE_DEPS,
         "//conditions:default": KERNEL_AND_DEVICE_DEPS + [
@@ -365,6 +370,7 @@ cc_library(
         ":eager_operation",
         ":kernel_and_device",
         ":tensor_handle",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/strings",
@@ -375,7 +381,7 @@ cc_library(
         "//tensorflow/core/profiler/lib:traceme",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "//tensorflow/core/distributed_runtime/eager:remote_mgr",
@@ -390,6 +396,24 @@ cc_library(
             "//tensorflow/core/distributed_runtime/eager:remote_copy_node",
         ],
     }) + if_mkl([":mkl_eager_op_rewrite"]),
+)
+
+tf_cc_test(
+    name = "execute_node_test",
+    srcs = ["execute_node_test.cc"],
+    deps = [
+        ":context",
+        ":core",
+        ":execute",
+        ":kernel_and_device",
+        ":tensor_handle",
+        "//tensorflow/core:core_cpu_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "@com_google_absl//absl/memory",
+    ],
 )
 
 cc_library(
@@ -462,6 +486,7 @@ cc_library(
         ":eager_operation",
         ":kernel_and_device",
         ":tensor_handle",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/strings",
@@ -473,7 +498,7 @@ cc_library(
         "//tensorflow/core/profiler/lib:traceme",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "//tensorflow/core/distributed_runtime/eager:remote_mgr",
@@ -502,7 +527,7 @@ tf_cuda_library(
         "@farmhash_archive//:farmhash",
     ] + select({
         "//tensorflow:android": [
-            "//tensorflow/core:android_tensorflow_lib_lite",
+            "//tensorflow/core:portable_tensorflow_lib_lite",
         ],
         "//conditions:default": [
             "//tensorflow/core:core_cpu",
