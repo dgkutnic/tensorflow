@@ -327,7 +327,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
   }
  
   VLOG(1) << "Program string:\n" << program_str_cpp;
-  
+ 
+  // TODO: Remove this after testing. Hard-coded until program generation works correctly 
   auto A = Placeholder(DType::FLOAT32, {8, 16});
   auto B = Placeholder(DType::FLOAT32, {16, 32});
   auto C = Dot(A, B);
