@@ -63,8 +63,9 @@ namespace plaidml {
 
 namespace {
 
+// TODO: Is this needed?
 // Handles custom_call ops during evaluation by routing them through the global
-// CPU registry used by other CPU-based backends.
+// registry used by other backends.
 StatusOr<Literal> HandleEvaluatorCustomCall(
     HloInstruction* custom_call, absl::Span<const Literal*> operands) {
   // Find the target C function in the global registry.
@@ -93,6 +94,7 @@ StatusOr<Literal> HandleEvaluatorCustomCall(
 
 }  // namespace
 
+// TODO: Figure out the right passes to run here
 Status PlaidMLCompiler::RunHloOptimization(HloModule* hlo_module) {
   HloPassPipeline pipeline("PlaidML");
 
