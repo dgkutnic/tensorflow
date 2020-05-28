@@ -47,6 +47,9 @@ limitations under the License.
 #include "plaidml/op/op.h"
 #include "plaidml/exec/exec.h"
 
+using ::plaidml::Buffer;
+using ::plaidml::TensorShape;
+using ::plaidml::edsl::LogicalShape;
 using ::plaidml::edsl::Placeholder;
 using ::plaidml::edsl::Program;
 using ::plaidml::edsl::ProgramBuilder;
@@ -57,6 +60,13 @@ using ::plaidml::edsl::TensorOutput;
 using ::plaidml::edsl::Value;
 
 using ::plaidml::DType;
+
+Buffer makeBuffer(const TensorShape& shape, const void* data) {
+  const auto& curDevice = ::plaidml::Settings::get("PLAIDML_DEVICE");
+  Buffer buffer(curDevice, shape);
+  buffer.copy_from(data);
+  return buffer;
+}
 
 namespace xla {
 namespace plaidml {
@@ -165,6 +175,10 @@ std::unique_ptr<Program> makeProgram(const std::string& name, const std::vector<
 StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     std::unique_ptr<HloModule> hlo_module) {
 
+  std::unordered_map<int, Tensor> instr_map;
+  std::unordered_map<int, Value> tuple_instr_map;
+  std::unordered_map<std::string, Value> fn_returns;
+  std::vector<Tensor> inputs;
   std::string program_str_cpp;
 
   VLOG(1) << "ProgramFromHloModule begin";
@@ -174,6 +188,16 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
   if (hlo_module->has_entry_computation()) {
     auto entry_computation = hlo_module->entry_computation();
     VLOG(1) << "PlaidML Entry Computation " + entry_computation->name() + ": num parameters " << entry_computation->num_parameters() << " returns " << entry_computation->root_instruction()->shape().ToString(); 
+    for (int i = 0; i < entry_computation->num_parameters(); i++) {
+      auto param = entry_computation->parameter_instruction(i);
+      auto pshape = param->shape();
+      std::vector<int64_t> param_shape;
+      auto param_dtype = pml_dtype_map_[pshape.element_type()];
+      for (int j = 0; j < pshape.dimensions_size(); j++) {
+        param_shape.push_back(pshape.dimensions(j));
+      }
+      inputs.push_back(Placeholder(param_dtype, param_shape));
+    }
   }
 
   std::string tabs = "";
@@ -184,8 +208,9 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     // TODO: Replace periods in computation name with underscores to make it a valid function name
     auto function_name = legalize_computation_name(computation->name());
     auto root_instr = computation->root_instruction();
-    auto root_instr_id = legalize_ids(root_instr->unique_id());
+    auto root_instr_id = root_instr->unique_id();
     auto root_instr_shape = root_instr->shape();
+/*
     std::string return_type;
     if (root_instr_shape.IsArray()) {
       return_type = "Tensor";
@@ -194,49 +219,73 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     }
     program_str_cpp += tabs + return_type + " " + function_name + "() {\n";
     tabs += "  ";
+*/
     for (auto* instruction : computation->instructions()) {
       VLOG(2) << xla::HloOpcodeString(instruction->opcode()) << " name " << instruction->name() << " id " << instruction->unique_id() << " num_operands " << instruction->operand_count();
       VLOG(2) << instruction->OperandsToString(HloPrintOptions());
-      auto instruction_name = instruction->name();
-      std::string unique_name = legalize_ids(instruction->unique_id());
+      auto cur_instr_name = instruction->name();
+      auto cur_instr_id = instruction->unique_id();
       auto num_operands = instruction->operand_count();
-      std::vector<std::string> operand_names;
+      std::vector<int> operand_ids;
       for (auto i = 0; i < num_operands; i++) {
-        std::string operand_id = legalize_ids(instruction->operand(i)->unique_id());
+        int operand_id = instruction->operand(i)->unique_id();
         VLOG(2) << "visiting operand " << operand_id;
-        operand_names.push_back(operand_id);
+        operand_ids.push_back(operand_id);
       }
       // result shape
       auto shape = instruction->shape();
-      auto dims = HumanString(shape);
-      auto type = shape.element_type();
-      std::string type_cpp = cpp_dtype_map_[type];
-      std::string type_plaidml = pml_dtype_map_[type];
+      std::vector<int64_t> dims;
+      for (int j = 0; j < shape.dimensions_size(); j++) {
+        dims.push_back(shape.dimensions(j));
+      }
+      auto type = pml_dtype_map_[shape.element_type()];
+      //std::string type_cpp = cpp_dtype_map_[type];
+      //std::string type_plaidml = pml_dtype_map_[type];
       // TODO: validate that all these general parameters are correct before constructing them into a larger program.
       switch (instruction->opcode()) {
         case HloOpcode::kConstant: {
+          auto tshape = TensorShape(type, dims);
+          auto lshape = LogicalShape(type, dims);
+          const Literal& literal = instruction->literal();
+          auto buf = makeBuffer(tshape, literal.untyped_data());
+          auto op = Constant(lshape, buf);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
           // Create constant buffers, etc.
-          program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
-          program_str_cpp += tabs + "std::vector<"+ type_cpp + "> " + unique_name + "_vals = " + instruction->OperandsToString(HloPrintOptions()) + ";\n";
-          program_str_cpp += tabs + "auto buffer" + unique_name + " = makeBuffer(TensorShape(" + type_plaidml + ", shape"  + unique_name + "), " + unique_name + "_vals);\n";
-          program_str_cpp += tabs + "auto " + unique_name + " = Constant(LogicalShape("+ type_plaidml + ", shape"  + unique_name + "), buffer" + unique_name + ", \"" + unique_name +"\");\n";
+          //program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
+          //program_str_cpp += tabs + "std::vector<"+ type_cpp + "> " + unique_name + "_vals = " + instruction->OperandsToString(HloPrintOptions()) + ";\n";
+          //program_str_cpp += tabs + "auto buffer" + unique_name + " = makeBuffer(TensorShape(" + type_plaidml + ", shape"  + unique_name + "), " + unique_name + "_vals);\n";
+          //program_str_cpp += tabs + "auto " + unique_name + " = Constant(LogicalShape("+ type_plaidml + ", shape"  + unique_name + "), buffer" + unique_name + ", \"" + unique_name +"\");\n";
           break;
         }
         case HloOpcode::kAdd: {
-          program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " + " + operand_names[1] + ";\n";
+          auto op = instr_map[operand_ids[0]] * instr_map[operand_ids[1]];
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          //program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " + " + operand_names[1] + ";\n";
           break;
         }
         case HloOpcode::kMultiply: {
-          program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " * " + operand_names[1] + ";\n";
+          // Tensor elementwise multiplication
+          auto op = instr_map[operand_ids[0]] * instr_map[operand_ids[1]];
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          //program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " * " + operand_names[1] + ";\n";
           break;
         }
         case HloOpcode::kReshape: {
-          program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
-          program_str_cpp += tabs + "auto " + unique_name + " = reshape(" + operand_names[0] + ", shape" + unique_name + ");\n";
+          auto op = ::plaidml::edsl::reshape(instr_map[operand_ids[0]], dims);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          //program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
+          //program_str_cpp += tabs + "auto " + unique_name + " = reshape(" + operand_names[0] + ", shape" + unique_name + ");\n";
           break;
         }
         case HloOpcode::kTuple: {
           // a kTuple operation is kind of like make_tuple in EDSL
+          std::vector<Value> tup_operands;
+          for (int i = 0; i < num_operands; i++) {
+            tup_operands.push_back(Value(instr_map[operand_ids[i]]));
+          }
+          auto op = ::plaidml::edsl::make_tuple(tup_operands);
+          tuple_instr_map.insert(std::make_pair(cur_instr_id, op));
+          /*
           program_str_cpp += tabs + "auto " + unique_name + " = make_tuple(";
           for (int i = 0; i < operand_names.size(); i++) {
             program_str_cpp += operand_names[i];
@@ -245,21 +294,26 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
             }
           } 
           program_str_cpp += ");\n";
+          */
           break;
         }
         case HloOpcode::kGetTupleElement: {
           // a kGetTupleElement operation is like taking an element in a Value and interpreting it as a tensor, int, etc.
           // TODO: Handle return type
-          auto tindex = std::to_string(instruction->tuple_index());
-          program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + ".as_tuple()[" + tindex + "].as_tensor();\n";
+          auto tindex = instruction->tuple_index();
+          //program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + ".as_tuple()[" + tindex + "].as_tensor();\n";
+          auto op = tuple_instr_map[operand_ids[0]].as_tuple()[tindex].as_tensor();
+          instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
         case HloOpcode::kCall: {
           // Call another EDSL function
           auto computation_to_apply = instruction->to_apply();
           auto computation_name = legalize_computation_name(computation_to_apply->name());
+          auto op = fn_returns[computation_name];
+          instr_map.insert(std::make_pair(cur_instr_id, op.as_tensor()));
           // TODO: check parameters, return types, etc.
-          program_str_cpp += tabs + "auto " + unique_name + " = " + computation_name + "();\n";
+          //program_str_cpp += tabs + "auto " + unique_name + " = " + computation_name + "();\n";
           break;
         }
         // TODO: Unary ops.
@@ -289,7 +343,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         case HloOpcode::kSqrt:
         case HloOpcode::kTanh: {
           // Parse operands.
-          program_str_cpp += tabs + "// unimplemented unary op " + instruction_name  + " has been called here\n";
+          VLOG(2) << "Unimplemented unary op " << cur_instr_name  << " has been called here\n";
           break;
         }
         // Binary ops.
@@ -308,33 +362,43 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         case HloOpcode::kShiftRightArithmetic:
         case HloOpcode::kShiftRightLogical: {
           // Parse operands.
-          program_str_cpp += tabs + "// unimplemented binary op " + instruction_name  + " has been called here\n";
+          VLOG(2) << "Unimplemented binary op " << cur_instr_name  << " has been called here\n";
           break;
         }
         // TODO: special instructions
         default:
-          program_str_cpp += "// unknown op has been called here\n";
+          VLOG(2) << "Unknown op" << cur_instr_name << "has been called here\n";
           break;
       }
     }
-    program_str_cpp += tabs + "return " + root_instr_id + ";\n";
+    /*
+    program_str_cpp += tabs + "return " + root_instr_id_str + ";\n";
     tabs.pop_back();
     tabs.pop_back();
     program_str_cpp += tabs + "}\n";
+    */
+    if (root_instr_shape.IsArray()) {
+      fn_returns.insert(std::make_pair(function_name, instr_map[root_instr_id]));
+    } else {
+      fn_returns.insert(std::make_pair(function_name, tuple_instr_map[root_instr_id]));
+    }
   }
- 
+
+  Tensor output; 
+
   if (hlo_module->has_entry_computation()) {
-    auto entry_computation_name = legalize_computation_name(hlo_module->entry_computation()->name());
-    program_str_cpp += tabs + "auto program_result = " + entry_computation_name + "();\n"; 
+    //auto entry_computation_name = legalize_computation_name(hlo_module->entry_computation()->name());
+    //program_str_cpp += tabs + "auto program_result = " + entry_computation_name + "();\n";
+    output = fn_returns[legalize_computation_name(hlo_module->entry_computation()->name())].as_tensor();
   }
  
-  VLOG(1) << "Program string:\n" << program_str_cpp;
+  //VLOG(1) << "Program string:\n" << program_str_cpp;
  
   // TODO: Remove this after testing. Hard-coded until program generation works correctly 
-  auto A = Placeholder(DType::FLOAT32, {8, 16});
-  auto B = Placeholder(DType::FLOAT32, {16, 32});
-  auto C = Dot(A, B);
-  auto program = makeProgram("dot", {C});
+  //auto A = Placeholder(DType::FLOAT32, {8, 16});
+  //auto B = Placeholder(DType::FLOAT32, {16, 32});
+  //auto C = Dot(A, B);
+  auto program = makeProgram("hlo_module", {output});
   VLOG(1) << "ProgramFromHloModule complete";
   return std::move(program);
 }

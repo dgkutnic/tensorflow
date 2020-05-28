@@ -37,6 +37,7 @@ limitations under the License.
 #include "plaidml/op/op.h"
 
 using ::plaidml::edsl::Program;
+using ::plaidml::DType;
 
 namespace xla {
 namespace plaidml {
@@ -66,18 +67,18 @@ class PlaidMLCompiler : public Compiler {
     {xla::F32, "float"},
     {xla::F64, "double"}
   };
-  std::unordered_map<xla::PrimitiveType, std::string> pml_dtype_map_ = {
-    {xla::PRED, "DType::BOOLEAN"},
-    {xla::S8, "DType::INT8"},
-    {xla::S16, "DType::INT16"},
-    {xla::S32, "DType::INT32"},
-    {xla::S64, "DType::INT64"},
-    {xla::U8, "DType::UINT8"},
-    {xla::U16, "DType::UINT16"},
-    {xla::U32, "DType::UINT32"},
-    {xla::U64, "DType::UINT64"},
-    {xla::F32, "DType::FLOAT32"},
-    {xla::F64, "DType::FLOAT32"}
+  std::unordered_map<xla::PrimitiveType, DType> pml_dtype_map_ = {
+    {xla::PRED, DType::BOOLEAN},
+    {xla::S8, DType::INT8},
+    {xla::S16, DType::INT16},
+    {xla::S32, DType::INT32},
+    {xla::S64, DType::INT64},
+    {xla::U8, DType::UINT8},
+    {xla::U16, DType::UINT16},
+    {xla::U32, DType::UINT32},
+    {xla::U64, DType::UINT64},
+    {xla::F32, DType::FLOAT32},
+    {xla::F64, DType::FLOAT32}
   };
 
   std::string HumanString(const Shape& shape);
