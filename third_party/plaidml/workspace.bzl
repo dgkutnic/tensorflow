@@ -7,7 +7,8 @@ def repo():
     http_archive(
         name = "com_intel_plaidml",
         build_file = clean_dep("//third_party/plaidml:BUILD.bazel"),
-        sha256 = "899df7cccfcd26dc3a33dfd7eba97e34ba115fd65910d7631e0feede0c277e53",
+        sha256 = "d97ac6d59f3a335c91d224a6cccd326c1aa057d779d89ba17f7cc4e00769c39a",
+#        sha256 = "899df7cccfcd26dc3a33dfd7eba97e34ba115fd65910d7631e0feede0c277e53",
         url = "https://github.com/plaidml/plaidml/archive/plaidml-v1.zip",
         strip_prefix = "plaidml-plaidml-v1",
     )

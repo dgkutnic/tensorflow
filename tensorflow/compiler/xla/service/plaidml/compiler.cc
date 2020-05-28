@@ -223,6 +223,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     for (auto* instruction : computation->instructions()) {
       VLOG(2) << xla::HloOpcodeString(instruction->opcode()) << " name " << instruction->name() << " id " << instruction->unique_id() << " num_operands " << instruction->operand_count();
       VLOG(2) << instruction->OperandsToString(HloPrintOptions());
+      VLOG(2) << "instruction returns " << instruction->shape().ToString();
       auto cur_instr_name = instruction->name();
       auto cur_instr_id = instruction->unique_id();
       auto num_operands = instruction->operand_count();
@@ -284,7 +285,13 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           break;
         }
         case HloOpcode::kReshape: {
-          auto op = ::plaidml::edsl::reshape(instr_map[operand_ids[0]], dims);
+          Tensor op;
+          if (!shape.rank()) {
+            VLOG(2) << "Attempted reshape on invalid shape" << shape.ToString();
+            op = instr_map[operand_ids[0]];
+          } else {
+            op = ::plaidml::edsl::reshape(instr_map[operand_ids[0]], dims);
+          }
           instr_map.insert(std::make_pair(cur_instr_id, op));
           //program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
           //program_str_cpp += tabs + "auto " + unique_name + " = reshape(" + operand_names[0] + ", shape" + unique_name + ");\n";
@@ -360,8 +367,6 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           break;
         }
         // Binary ops.
-        case HloOpcode::kDivide:
-        case HloOpcode::kSubtract:
         case HloOpcode::kAtan2:
         case HloOpcode::kComplex:
         case HloOpcode::kMaximum:
