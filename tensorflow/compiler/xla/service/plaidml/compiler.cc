@@ -258,7 +258,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           break;
         }
         case HloOpcode::kAdd: {
-          auto op = instr_map[operand_ids[0]] * instr_map[operand_ids[1]];
+          // Tensor elementwise addition
+          auto op = instr_map[operand_ids[0]] + instr_map[operand_ids[1]];
           instr_map.insert(std::make_pair(cur_instr_id, op));
           //program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " + " + operand_names[1] + ";\n";
           break;
@@ -268,6 +269,18 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           auto op = instr_map[operand_ids[0]] * instr_map[operand_ids[1]];
           instr_map.insert(std::make_pair(cur_instr_id, op));
           //program_str_cpp += tabs + "auto " + unique_name + " = " + operand_names[0] + " * " + operand_names[1] + ";\n";
+          break;
+        }
+        case HloOpcode::kSubtract: {
+          // Tensor elementwse subtraction
+          auto op = instr_map[operand_ids[0]] - instr_map[operand_ids[1]];
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kDivide: {
+          // Tensor elementwise division
+          auto op = instr_map[operand_ids[0]] / instr_map[operand_ids[1]];
+          instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
         case HloOpcode::kReshape: {
