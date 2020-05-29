@@ -660,8 +660,8 @@ def tf_repositories(path_prefix = "", tf_repo_name = ""):
     LLVM_COMMIT = "b684916d0a8b7cea1088acf0922e544779881bc7"
     LLVM_SHA256 = "8973aa6bb6d1f5870a658c425c12a55937d892c4ff73ec2d85932113d0d9bb08"
     LLVM_URLS = [
-        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
-        "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
+        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/plaidml/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
+        "https://github.com/plaidml/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
     ]
     tf_http_archive(
         name = "llvm-project",
