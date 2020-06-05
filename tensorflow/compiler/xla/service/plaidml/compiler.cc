@@ -60,6 +60,7 @@ using ::plaidml::edsl::TensorOutput;
 using ::plaidml::edsl::Value;
 
 using ::plaidml::DType;
+namespace plaidml_op = ::plaidml::op;
 
 Buffer makeBuffer(const TensorShape& shape, const void* data) {
   const auto& curDevice = ::plaidml::Settings::get("PLAIDML_DEVICE");
@@ -178,7 +179,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
   std::unordered_map<int, Tensor> instr_map;
   std::unordered_map<int, Value> tuple_instr_map;
   std::unordered_map<std::string, Value> fn_returns;
-  std::vector<Tensor> inputs;
+  // TODO: may be unnecessary because TF has the kParameter opcode which instantiates Placeholder creation.
+  // std::vector<Tensor> inputs;
   std::string program_str_cpp;
 
   VLOG(1) << "ProgramFromHloModule begin";
@@ -188,6 +190,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
   if (hlo_module->has_entry_computation()) {
     auto entry_computation = hlo_module->entry_computation();
     VLOG(1) << "PlaidML Entry Computation " + entry_computation->name() + ": num parameters " << entry_computation->num_parameters() << " returns " << entry_computation->root_instruction()->shape().ToString(); 
+    /*
     for (int i = 0; i < entry_computation->num_parameters(); i++) {
       auto param = entry_computation->parameter_instruction(i);
       auto pshape = param->shape();
@@ -198,6 +201,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
       }
       inputs.push_back(Placeholder(param_dtype, param_shape));
     }
+    */
   }
 
   std::string tabs = "";
@@ -284,11 +288,64 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
+        case HloOpcode::kMaximum: {
+          // Tensor elementwise maximum
+          auto op = plaidml_op::maximum(instr_map[operand_ids[0]], instr_map[operand_ids[1]]);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kMinimum: {
+          // Tensor elementwise minimum
+          auto op = plaidml_op::minimum(instr_map[operand_ids[0]], instr_map[operand_ids[1]]);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kConvolution: {
+          // Tensor convolution operation
+          // TODO: make sure optional operands are passed correctly
+          auto op = plaidml_op::convolution(instr_map[operand_ids[0]], instr_map[operand_ids[1]]);
+          // padding defaults to valid, test same padding and manual padding 
+          // auto padding_config = instruction->padding_config();
+          op = op.autopad_mode(plaidml_op::AutoPadMode::VALID);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kDot: {
+          // Tensor dot operation
+          auto op = plaidml_op::dot(instr_map[operand_ids[0]], instr_map[operand_ids[1]]);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kBroadcast: {
+          // Broadcasting is handled implicitly by PlaidML, so this is a no-op
+          instr_map.insert(std::make_pair(cur_instr_id, instr_map[operand_ids[0]]));
+          break;
+        }
+        case HloOpcode::kConvert: {
+          // Equivalent to cast
+          auto op = ::plaidml::edsl::cast(instr_map[operand_ids[0]], type);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kParameter: {
+          // Tensor inputs, create a placeholder
+          auto op = Placeholder(type, dims);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
         case HloOpcode::kReshape: {
+          // Tensor reshape operation
           auto op = ::plaidml::edsl::reshape(instr_map[operand_ids[0]], dims);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           //program_str_cpp += tabs + "std::vector<int64_t> shape" + unique_name + " = " + dims + ";\n";
           //program_str_cpp += tabs + "auto " + unique_name + " = reshape(" + operand_names[0] + ", shape" + unique_name + ");\n";
+          break;
+        }
+        case HloOpcode::kTranspose: {
+          // Tensor transpose operation
+          // TODO: test correctness, see if the axes operand is needed
+          auto op = plaidml_op::transpose(instr_map[operand_ids[0]]);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
         case HloOpcode::kTuple: {
@@ -363,8 +420,6 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         // Binary ops.
         case HloOpcode::kAtan2:
         case HloOpcode::kComplex:
-        case HloOpcode::kMaximum:
-        case HloOpcode::kMinimum:
         case HloOpcode::kPower:
         case HloOpcode::kRemainder:
         case HloOpcode::kAnd:
@@ -379,7 +434,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         }
         // TODO: special instructions
         default:
-          VLOG(2) << "Unknown op" << cur_instr_name << "has been called here\n";
+          VLOG(2) << "Unknown op " << cur_instr_name << " (opcode " << HloOpcodeString(instruction->opcode()) << ") has been called here\n";
           break;
       }
     }

@@ -58,7 +58,6 @@ cc_library(
         "//tensorflow/stream_executor",
         "@com_google_absl//absl/memory",
         "@com_intel_plaidml//plaidml",
-        "@com_intel_plaidml//pmlc/target/x86:x86",
 #        "@com_intel_plaidml//plaidml/edsl:edsl",
 #        "@com_intel_plaidml//plaidml/exec:exec",
 #        "@com_intel_plaidml//plaidml/op:op",

@@ -35,6 +35,7 @@ limitations under the License.
 #include "plaidml/edsl/edsl.h"
 #include "plaidml/exec/exec.h"
 #include "plaidml/op/op.h"
+#include "pmlc/target/x86/passes.h"
 
 using ::plaidml::edsl::Program;
 using ::plaidml::DType;
@@ -50,6 +51,7 @@ class PlaidMLCompiler : public Compiler {
     ::plaidml::edsl::init();
     ::plaidml::op::init();
     ::plaidml::exec::init();
+    ::pmlc::target::x86::registerPassPipeline();
   }
   ~PlaidMLCompiler() {}
 
@@ -77,6 +79,7 @@ class PlaidMLCompiler : public Compiler {
     {xla::U16, DType::UINT16},
     {xla::U32, DType::UINT32},
     {xla::U64, DType::UINT64},
+    {xla::F16, DType::FLOAT16},
     {xla::F32, DType::FLOAT32},
     {xla::F64, DType::FLOAT32}
   };

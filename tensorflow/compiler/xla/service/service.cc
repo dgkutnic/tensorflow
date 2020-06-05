@@ -836,6 +836,10 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
   TF_ASSIGN_OR_RETURN(std::unique_ptr<HloModule> module,
                       CreateModuleFromProto(module_proto, *module_config));
 
+  VLOG(1) << "Dumping HLO Module";
+  DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
+  VLOG(1) << "Finish dumping HLO Module";
+
   VLOG(1) << "Creating the PlaidML compiler";
   // add plaidml executable here
   plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
@@ -846,8 +850,9 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
 
   VLOG(1) << "Finish creating the PlaidML Compiler";
 
-  VLOG(1) << "Dumping HLO Module";
+  //VLOG(1) << "Dumping HLO Module";
   //DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
+  //VLOG(1) << "Finish dumping HLO Module";
 
   /*
   TF_ASSIGN_OR_RETURN(
