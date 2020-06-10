@@ -34,11 +34,13 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_pass_fix.h"
 #include "tensorflow/compiler/xla/service/hlo_pass_pipeline.h"
 #include "tensorflow/compiler/xla/service/hlo_subcomputation_unification.h"
+#include "tensorflow/compiler/xla/service/pattern_matcher.h"
 #include "tensorflow/compiler/xla/service/plaidml/executable.h"
 #include "tensorflow/compiler/xla/service/layout_assignment.h"
 #include "tensorflow/compiler/xla/service/map_inliner.h"
 #include "tensorflow/compiler/xla/service/reshape_mover.h"
 #include "tensorflow/compiler/xla/service/triangular_solve_expander.h"
+#include "tensorflow/compiler/xla/window_util.h"
 #include "tensorflow/compiler/xla/service/while_loop_simplifier.h"
 #include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/lib/core/errors.h"
@@ -61,6 +63,7 @@ using ::plaidml::edsl::Value;
 
 using ::plaidml::DType;
 namespace plaidml_op = ::plaidml::op;
+namespace m = xla::match;
 
 Buffer makeBuffer(const TensorShape& shape, const void* data) {
   const auto& curDevice = ::plaidml::Settings::get("PLAIDML_DEVICE");
@@ -176,9 +179,27 @@ std::unique_ptr<Program> makeProgram(const std::string& name, const std::vector<
 StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     std::unique_ptr<HloModule> hlo_module) {
 
+  VLOG(2) << "ORIGINAL HLO MODULE:\n" << hlo_module->ToString();
+
   std::unordered_map<int, Tensor> instr_map;
   std::unordered_map<int, Value> tuple_instr_map;
   std::unordered_map<std::string, Value> fn_returns;
+
+  auto computation_is_addition = [](HloComputation* c) {
+    return c->instruction_count() == 3 &&
+    Match(c->root_instruction(), m::Add(m::Parameter(), m::Parameter()));
+  };
+
+  auto computation_is_multiplication = [](HloComputation* c) {
+    return c->instruction_count() == 3 &&
+    Match(c->root_instruction(), m::Multiply(m::Parameter(), m::Parameter()));
+  };
+
+  auto computation_is_maximum = [](HloComputation* c) {
+    return c->instruction_count() == 3 &&
+    Match(c->root_instruction(), m::Maximum(m::Parameter(), m::Parameter()));
+  };
+
   // TODO: may be unnecessary because TF has the kParameter opcode which instantiates Placeholder creation.
   // std::vector<Tensor> inputs;
   std::string program_str_cpp;
@@ -288,6 +309,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
+        case HloOpcode::kExp: {
+          // Tensor elementwise exp
+          auto op = ::plaidml::edsl::exp(instr_map[operand_ids[0]]);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
         case HloOpcode::kMaximum: {
           // Tensor elementwise maximum
           auto op = plaidml_op::maximum(instr_map[operand_ids[0]], instr_map[operand_ids[1]]);
@@ -316,9 +343,79 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
+        case HloOpcode::kReduce: {
+          // with reduce, an axis is specified, so figure out which computation and pass that in to the op lib
+          VLOG(2) << "begin processing reduce";
+          HloReduceInstruction* reduce = Cast<HloReduceInstruction>(instruction);
+          auto reduction_dims = reduce->dimensions();
+          std::vector<int> axes;
+          for (auto d : reduction_dims) {
+            axes.push_back(d);
+            VLOG(2) <<  "Adding axis " << d << " to reduce";
+          }
+          Tensor op;
+          auto applied_computation = instruction->to_apply();
+          if (computation_is_maximum(applied_computation)) {
+            VLOG(2) << "Reached condition: max with reduce";
+            op = plaidml_op::max(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
+          } else if (computation_is_addition(applied_computation)) {
+            VLOG(2) << "Reached condition: add with reduce";
+            op = plaidml_op::sum(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
+          }
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
+        case HloOpcode::kReduceWindow: {
+          // This is some sort of aggregation. If the aggregation op is max, then it's a max pool
+          VLOG(2) << "begin processing reduce-window";
+          Tensor op;
+          // Keras default pool mode and pad mode
+          plaidml_op::PoolMode pm = plaidml_op::PoolMode::AVG;
+          plaidml_op::AutoPadMode am = plaidml_op::AutoPadMode::VALID;
+          // TODO: Window dimensions also store strides, if strides are nondefault.
+          std::vector<int> default_strides = {1, 1};
+          // This window is in NHWC format: for example, a window of 1x2x2x1 translates to {2, 2} in the pooling op
+          auto raw_window = instruction->window();
+          std::vector<int> processed_window;
+          /*
+          for (auto d : raw_window.dimensions()) {
+            if (!window_util::IsTrivialWindowDimension(d)) {
+              processed_window.push_back(d.size());
+              VLOG(2) << "added dimension " << d.size() << " to pool";
+            }
+          }
+          */
+          // IsTrivialWindowDimension doesn't work as expected on a test case. I'll hard code these values for now and re-visit.
+          processed_window.push_back(raw_window.dimensions()[1].size());
+          processed_window.push_back(raw_window.dimensions()[2].size());
+          auto applied_computation = instruction->to_apply();
+          if (computation_is_maximum(applied_computation)) {
+            VLOG(2) << "Reached condition: max pooling";
+            pm = plaidml_op::PoolMode::MAX;
+          }
+          // TODO: Add conditions for avg pooling, sum pooling, etc.
+          op = plaidml_op::pool(instr_map[operand_ids[0]], pm, processed_window, default_strides, am, {}, plaidml_op::TensorLayout::NXC);
+          instr_map.insert(std::make_pair(cur_instr_id, op));
+          break;
+        }
         case HloOpcode::kBroadcast: {
-          // Broadcasting is handled implicitly by PlaidML, so this is a no-op
-          instr_map.insert(std::make_pair(cur_instr_id, instr_map[operand_ids[0]]));
+          // Broadcasting is handled implicitly by PlaidML, so this is a no-op, UNLESS the broadcast doesn't have numpy semantics, then we must perform a repeat
+          auto op = instr_map[operand_ids[0]];
+          auto operand_shape = instruction->operand(0)->shape();
+          auto bcast_dims = instruction->dimensions();
+          // Check if numpy style broadcasting semantics exist
+          // Constants can always be broadcasted
+          // Assume that two tensors with the same rank can be broadcasted
+          // Dims can be prepended, cannot be appended
+          if (operand_shape.rank() && operand_shape.rank() != dims.size()) {
+            if (bcast_dims.size() == operand_shape.rank() && std::find(bcast_dims.begin(), bcast_dims.end(), dims.size() - 1) == bcast_dims.end()) {
+              // Broadcasting all dims, need to add 1 to the reshape
+              std::vector<int64_t> reshape_dims = dims;
+              reshape_dims[reshape_dims.size() - 1] = 1;
+              op = ::plaidml::edsl::reshape(op, reshape_dims);
+            }
+          }
+          instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
         case HloOpcode::kConvert: {
@@ -397,7 +494,6 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         case HloOpcode::kCopyStart:
         case HloOpcode::kCopyDone:
         case HloOpcode::kCos:
-        case HloOpcode::kExp:
         case HloOpcode::kExpm1:
         case HloOpcode::kImag:
         case HloOpcode::kIsFinite:
