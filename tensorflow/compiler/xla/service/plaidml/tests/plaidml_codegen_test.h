@@ -23,11 +23,15 @@ limitations under the License.
 
 using ::plaidml::edsl::Program;
 
+#include "plaidml/testenv.h"
+
+using ::plaidml::edsl::TestFixture;
+
 namespace xla {
 namespace plaidml {
 
 // Tests that verify IR emitted by the PLAIDML backend is as expected.
-class PlaidMLCodegenTest : public HloTestBase {
+class PlaidMLCodegenTest : public TestFixture {
  protected:
   // Compiles hlo_module with the JIT compiler.
   std::unique_ptr<Program> CompileToProgram(

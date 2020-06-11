@@ -2,11 +2,12 @@
 
 #include <algorithm>
 #include <string>
+#include <map>
+#include <variant>
 
 #include <gtest/gtest.h>
 
 #include "absl/strings/str_cat.h"
-//#include "tensorflow/compiler/xla/service/cpu/cpu_compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
@@ -15,10 +16,17 @@
 #include "tensorflow/compiler/xla/tests/test_utils.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
+#include "plaidml/testenv.h"
+#include "tensorflow/compiler/xla/tests/hlo_test_base.h"
+
+using ::plaidml::edsl::TensorBuffers;
 
 namespace xla {
 namespace plaidml {
 namespace {
+
+using TestCaseVal = std::vector<std::vector<float>>;
+using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
 
 struct EltwiseTestSpec {
   PrimitiveType primitive_type;
@@ -34,9 +42,12 @@ class PlaidMLEltwiseOperationTest
       public ::testing::WithParamInterface<EltwiseTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloComputation> entry_computation,
-                       const string& filecheck_lines) {
+                         const string& filecheck_lines,
+                         const TestCasePairs& testcase_pairs) {
 
-    std::unique_ptr<HloModule> hlo_module = CreateNewVerifiedModule();
+    HloModuleConfig cfg;
+
+    std::unique_ptr<HloModule> hlo_module = absl::make_unique<HloModule>("module", cfg);
     hlo_module->AddEntryComputation(std::move(entry_computation));
 
     auto program = CompileToProgram(std::move(hlo_module));
@@ -50,34 +61,29 @@ class PlaidMLEltwiseOperationTest
 
     VLOG(2) << "Evaluating results";
 
-    // Create TensorShape
-    // ::plaidml::TensorShape(pml_dtype_map_[shape.element_type()], shape_here);
-    // makeBuffer
+    //std::vector<float> input_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    //std::vector<float> expected = {2, 4, 6, 8, 10, 12, 14, 16, 18};
 
-    std::vector<float> input_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    std::vector<float> expected = {2, 4, 6, 8, 10, 12, 14, 16, 18};
+    for (auto pair : testcase_pairs) {
 
-/*
+      TensorBuffers inp;
+      TensorBuffers exp;
 
-    auto cpu_compiler = cpu::CpuCompiler().RunBackend(std::move(hlo_module),
-                                   backend().default_stream_executor(),
-                                   //device_allocator=nullptr);
+      auto program_inputs = program->inputs();
 
-    std::initializer_list<std::initializer_list<float>> input_vec = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-    std::initializer_list<std::initializer_list<float>> expected  = {{2, 4, 6}, {8, 10, 12}, {14, 16, 18}};
+      for (auto i = 0; i < program_inputs.size(); i++) {
+        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
+      }
 
-    VLOG(2) << "Creating inputs";
+      auto program_outputs = program->outputs();
 
-    std::vector<Literal> input_args = {LiteralUtil::CreateR2<float>(input_vec), LiteralUtil::CreateR2<float>(input_vec)};
+      for (auto i = 0; i < program_outputs.size(); i++) {
+        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
+      }
 
-    HloEvaluator eval;
+      checkProgram(*program, inp, exp);
 
-    VLOG(2) << "Calling Evaluator";
-
-    StatusOr<Literal> result_literal = eval.Evaluate(*hlo_module->entry_computation(), input_args);
-*/
-
-    //CHECK_EQ(result_literal, LiteralUtil::CreateR2<float>(expected));
+    }
 
     return Status::OK();
 
@@ -85,7 +91,14 @@ class PlaidMLEltwiseOperationTest
 };
 
 TEST_P(PlaidMLEltwiseOperationTest, EltwiseAddOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {2, 4, 6, 8, 10, 12, 14, 16, 18};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("EltwiseAddOp");
   EltwiseTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -96,13 +109,19 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseAddOp) {
       HloInstruction::CreateParameter(1, param_shape, "input"));
 
   builder.AddInstruction(HloInstruction::CreateBinary(param_shape, HloOpcode::kAdd, lhs, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
-/*
 
 TEST_P(PlaidMLEltwiseOperationTest, EltwiseSubOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("EltwiseSubOp");
   EltwiseTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -113,11 +132,18 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseSubOp) {
       HloInstruction::CreateParameter(1, param_shape, "input"));
 
   builder.AddInstruction(HloInstruction::CreateBinary(param_shape, HloOpcode::kSubtract, lhs, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
 TEST_P(PlaidMLEltwiseOperationTest, EltwiseMulOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {1, 4, 9, 16, 25, 36, 49, 64, 81};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("EltwiseMulOp");
   EltwiseTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -128,11 +154,18 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseMulOp) {
       HloInstruction::CreateParameter(1, param_shape, "input"));
 
   builder.AddInstruction(HloInstruction::CreateBinary(param_shape, HloOpcode::kMultiply, lhs, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
 TEST_P(PlaidMLEltwiseOperationTest, EltwiseDivOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("EltwiseDivOp");
   EltwiseTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -143,9 +176,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseDivOp) {
       HloInstruction::CreateParameter(1, param_shape, "input"));
 
   builder.AddInstruction(HloInstruction::CreateBinary(param_shape, HloOpcode::kDivide, lhs, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
-*/
 
 std::vector<EltwiseTestSpec> GetEltwiseTestCases() {
   std::vector<EltwiseTestSpec> result;

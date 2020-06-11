@@ -13,6 +13,7 @@ cc_library(
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "@com_intel_plaidml//plaidml:testenv",
     ],
 )
 
