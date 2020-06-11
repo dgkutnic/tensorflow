@@ -17,7 +17,7 @@
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
 #include "plaidml/testenv.h"
-#include "tensorflow/compiler/xla/tests/hlo_test_base.h"
+//#include "tensorflow/compiler/xla/tests/hlo_test_base.h"
 
 using ::plaidml::edsl::TensorBuffers;
 
@@ -60,9 +60,6 @@ class PlaidMLEltwiseOperationTest
     EXPECT_TRUE(fc_result.ValueOrDie());
 
     VLOG(2) << "Evaluating results";
-
-    //std::vector<float> input_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    //std::vector<float> expected = {2, 4, 6, 8, 10, 12, 14, 16, 18};
 
     for (auto pair : testcase_pairs) {
 

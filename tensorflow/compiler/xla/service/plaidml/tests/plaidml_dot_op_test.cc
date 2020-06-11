@@ -18,6 +18,9 @@ namespace xla {
 namespace plaidml {
 namespace {
 
+using TestCaseVal = std::vector<std::vector<float>>;
+using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
+
 struct DotTestSpec {
   PrimitiveType primitive_type;
   string filecheck_lines;
@@ -55,7 +58,7 @@ TEST_P(PlaidMLDotOperationTest, SimpleDotOp) {
   HloComputation::Builder builder(TestName());
   DotTestSpec spec = GetParam();
 
-  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {128, 128});
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
 
   HloInstruction* lhs = builder.AddInstruction(
       HloInstruction::CreateParameter(0, param_shape, "input"));
@@ -70,7 +73,7 @@ TEST_P(PlaidMLDotOperationTest, DotTransposeOp) {
   HloComputation::Builder builder(TestName());
   DotTestSpec spec = GetParam();
 
-  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {128, 128});
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
 
   HloInstruction* lhs = builder.AddInstruction(
       HloInstruction::CreateParameter(0, param_shape, "input"));
@@ -87,11 +90,11 @@ std::vector<DotTestSpec> GetDotTestCases() {
   std::vector<DotTestSpec> result;
 // TODO: reenable F16 when it is ready
 //  result.push_back(
-//      {F16, R"(CHECK: func @hlo_module(%arg0: tensor<128x128xf32>, %arg1: tensor<128x128xf32>) -> tensor<128x128xf32>)"});
+//      {F16, R"(CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xf32>)"});
   result.push_back(
-      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<128x128xf32>, %arg1: tensor<128x128xf32>) -> tensor<128x128xf32>)"});
+      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xf32>)"});
   result.push_back(
-      {F64, R"(CHECK: func @hlo_module(%arg0: tensor<128x128xf32>, %arg1: tensor<128x128xf32>) -> tensor<128x128xf32>)"});
+      {F64, R"(CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xf32>)"});
   return result;
 }
 
