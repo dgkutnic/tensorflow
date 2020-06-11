@@ -17,7 +17,6 @@
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
 #include "plaidml/testenv.h"
-//#include "tensorflow/compiler/xla/tests/hlo_test_base.h"
 
 using ::plaidml::edsl::TensorBuffers;
 

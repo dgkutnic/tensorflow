@@ -9,10 +9,14 @@
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
+#include "tensorflow/compiler/xla/service/hlo_evaluator.h"
 #include "tensorflow/compiler/xla/tests/filecheck.h"
 #include "tensorflow/compiler/xla/tests/test_utils.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
+#include "plaidml/testenv.h"
+
+using ::plaidml::edsl::TensorBuffers;
 
 namespace xla {
 namespace plaidml {
@@ -35,9 +39,12 @@ class PlaidMLDotOperationTest
       public ::testing::WithParamInterface<DotTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloComputation> entry_computation,
-                       const string& filecheck_lines) {
+                         const string& filecheck_lines,
+                         const TestCasePairs& testcase_pairs) {
 
-    std::unique_ptr<HloModule> hlo_module = CreateNewVerifiedModule();
+    HloModuleConfig cfg;
+
+    std::unique_ptr<HloModule> hlo_module = absl::make_unique<HloModule>("module", cfg);
     hlo_module->AddEntryComputation(std::move(entry_computation));
 
     auto program = CompileToProgram(std::move(hlo_module));
@@ -49,13 +56,41 @@ class PlaidMLDotOperationTest
     //TF_ASSERT_OK(fc_result.status());
     EXPECT_TRUE(fc_result.ValueOrDie());
 
+    for (auto pair : testcase_pairs) {
+
+      TensorBuffers inp;
+      TensorBuffers exp;
+
+      auto program_inputs = program->inputs();
+
+      for (auto i = 0; i < program_inputs.size(); i++) {
+        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
+      }
+
+      auto program_outputs = program->outputs();
+
+      for (auto i = 0; i < program_outputs.size(); i++) {
+        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
+      }
+
+      checkProgram(*program, inp, exp);
+
+    }
+
     return Status::OK();
 
   }
 };
 
 TEST_P(PlaidMLDotOperationTest, SimpleDotOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {30, 36, 42, 66, 81, 96, 102, 126, 150};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("SimpleDotOp");
   DotTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -66,11 +101,18 @@ TEST_P(PlaidMLDotOperationTest, SimpleDotOp) {
       HloInstruction::CreateParameter(1, param_shape, "input"));
 
   builder.AddInstruction(CreateCanonicalDot(param_shape, lhs, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
 TEST_P(PlaidMLDotOperationTest, DotTransposeOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> expected_val = {66, 78, 90, 78, 93, 108, 90, 108, 126};
+
+  TestCaseVal inputs = {input_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("DotTransposeOp");
   DotTestSpec spec = GetParam();
 
   auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
@@ -83,7 +125,7 @@ TEST_P(PlaidMLDotOperationTest, DotTransposeOp) {
       HloInstruction::CreateTranspose(param_shape, lhs, {1, 0}));
 
   builder.AddInstruction(CreateCanonicalDot(param_shape, lhs_transposed, rhs));
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
 std::vector<DotTestSpec> GetDotTestCases() {
