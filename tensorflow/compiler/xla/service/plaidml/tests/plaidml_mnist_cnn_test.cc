@@ -10,6 +10,7 @@
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
+#include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
 #include "tensorflow/compiler/xla/service/hlo_opcode.h"
 #include "tensorflow/compiler/xla/tests/filecheck.h"
 #include "tensorflow/compiler/xla/tests/test_utils.h"
@@ -51,388 +52,99 @@ class PlaidMLMnistCnnOperationTest
 TEST_P(PlaidMLMnistCnnOperationTest, SimpleMnistCnn) {
   MnistCnnTestSpec spec = GetParam();
 
-  std::unique_ptr<HloModule> hlo_module = CreateNewVerifiedModule();
+  HloModuleConfig cfg;
 
-  auto scalar_shape = ShapeUtil::MakeShape(spec.primitive_type, {});
+  //std::unique_ptr<HloModule> hlo_module = absl::make_unique<HloModule>("module", cfg);
 
-  HloComputation::Builder max_builder(TestName() + ".max");
+  std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
 
-  HloInstruction* max_lhs = max_builder.AddInstruction(
-      HloInstruction::CreateParameter(0, scalar_shape, "input"));
-  HloInstruction* max_rhs = max_builder.AddInstruction(
-      HloInstruction::CreateParameter(1, scalar_shape, "input"));
+std::string hlo_text = R"(HloModule cluster_0__XlaCompiledKernel_true__XlaHasReferenceVars_false__XlaNumConstantArgs_6__XlaNumResourceArgs_0_.74
 
-  auto max_builder_body = max_builder.AddInstruction(HloInstruction::CreateBinary(scalar_shape, HloOpcode::kMaximum, max_lhs, max_rhs));
+%max_F32.29 (lhs.30: f32[], rhs.31: f32[]) -> f32[] {
+  %lhs.30 = f32[] parameter(0)
+  %rhs.31 = f32[] parameter(1)
+  ROOT %maximum.32 = f32[] maximum(f32[] %lhs.30, f32[] %rhs.31)
+}
 
-  auto max_computation = hlo_module->AddEmbeddedComputation(max_builder.Build());
+%max_float_.53 (x.54: f32[], y.55: f32[]) -> f32[] {
+  %x.54 = f32[] parameter(0)
+  %y.55 = f32[] parameter(1)
+  ROOT %maximum.56 = f32[] maximum(f32[] %x.54, f32[] %y.55)
+}
 
-  HloComputation::Builder add_builder(TestName() + ".add");
+%add_float_.63 (x.64: f32[], y.65: f32[]) -> f32[] {
+  %x.64 = f32[] parameter(0)
+  %y.65 = f32[] parameter(1)
+  ROOT %add.66 = f32[] add(f32[] %x.64, f32[] %y.65)
+}
 
-  HloInstruction* add_lhs = add_builder.AddInstruction(
-      HloInstruction::CreateParameter(0, scalar_shape, "input"));
-  HloInstruction* add_rhs = add_builder.AddInstruction(
-      HloInstruction::CreateParameter(1, scalar_shape, "input"));
+ENTRY %cluster_0__XlaCompiledKernel_true__XlaHasReferenceVars_false__XlaNumConstantArgs_6__XlaNumResourceArgs_0_.74 (arg0.1: f32[1,224,224,1], arg1.2: f32[3,3,1,32], arg2.3: f32[32], arg3.4: f32[3,3,32,64], arg4.5: f32[64], arg5.6: f32[64,128], arg6.7: f32[128], arg7.8: f32[128,100], arg8.9: f32[100]) -> f32[1,219,219,100] {
+  %arg8.9 = f32[100]{0} parameter(8), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.18 = f32[100]{0} reshape(f32[100]{0} %arg8.9)
+  %broadcast.50 = f32[1,219,219,100]{3,2,1,0} broadcast(f32[100]{0} %reshape.18), dimensions={3}, metadata={op_type="AddV2" op_name="add_3"}
+  %constant.44 = f32[] constant(0), metadata={op_type="Relu" op_name="Relu_2"}
+  %broadcast.45 = f32[1,219,219,128]{3,2,1,0} broadcast(f32[] %constant.44), dimensions={}, metadata={op_type="Relu" op_name="Relu_2"}
+  %arg6.7 = f32[128]{0} parameter(6), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.16 = f32[128]{0} reshape(f32[128]{0} %arg6.7)
+  %broadcast.42 = f32[1,219,219,128]{3,2,1,0} broadcast(f32[128]{0} %reshape.16), dimensions={3}, metadata={op_type="AddV2" op_name="add_2"}
+  %constant.34 = f32[] constant(0), metadata={op_type="Relu" op_name="Relu_1"}
+  %broadcast.35 = f32[1,219,219,64]{3,2,1,0} broadcast(f32[] %constant.34), dimensions={}, metadata={op_type="Relu" op_name="Relu_1"}
+  %constant.22 = f32[] constant(0), metadata={op_type="Relu" op_name="Relu"}
+  %broadcast.23 = f32[1,222,222,32]{3,2,1,0} broadcast(f32[] %constant.22), dimensions={}, metadata={op_type="Relu" op_name="Relu"}
+  %arg0.1 = f32[1,224,224,1]{3,2,1,0} parameter(0), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.10 = f32[1,224,224,1]{3,2,1,0} reshape(f32[1,224,224,1]{3,2,1,0} %arg0.1)
+  %arg1.2 = f32[3,3,1,32]{3,2,1,0} parameter(1), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.11 = f32[3,3,1,32]{3,2,1,0} reshape(f32[3,3,1,32]{3,2,1,0} %arg1.2)
+  %convolution.19 = f32[1,222,222,32]{3,2,1,0} convolution(f32[1,224,224,1]{3,2,1,0} %reshape.10, f32[3,3,1,32]{3,2,1,0} %reshape.11), window={size=3x3}, dim_labels=b01f_01io->b01f, metadata={op_type="Conv2D" op_name="Conv2D"}
+  %arg2.3 = f32[32]{0} parameter(2), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.12 = f32[32]{0} reshape(f32[32]{0} %arg2.3)
+  %broadcast.20 = f32[1,222,222,32]{3,2,1,0} broadcast(f32[32]{0} %reshape.12), dimensions={3}, metadata={op_type="AddV2" op_name="add"}
+  %add.21 = f32[1,222,222,32]{3,2,1,0} add(f32[1,222,222,32]{3,2,1,0} %convolution.19, f32[1,222,222,32]{3,2,1,0} %broadcast.20), metadata={op_type="AddV2" op_name="add"}
+  %maximum.24 = f32[1,222,222,32]{3,2,1,0} maximum(f32[1,222,222,32]{3,2,1,0} %broadcast.23, f32[1,222,222,32]{3,2,1,0} %add.21), metadata={op_type="Relu" op_name="Relu"}
+  %arg3.4 = f32[3,3,32,64]{3,2,1,0} parameter(3), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.13 = f32[3,3,32,64]{3,2,1,0} reshape(f32[3,3,32,64]{3,2,1,0} %arg3.4)
+  %convolution.25 = f32[1,220,220,64]{3,2,1,0} convolution(f32[1,222,222,32]{3,2,1,0} %maximum.24, f32[3,3,32,64]{3,2,1,0} %reshape.13), window={size=3x3}, dim_labels=b01f_01io->b01f, metadata={op_type="Conv2D" op_name="Conv2D_1"}
+  %arg4.5 = f32[64]{0} parameter(4), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.14 = f32[64]{0} reshape(f32[64]{0} %arg4.5)
+  %broadcast.26 = f32[1,220,220,64]{3,2,1,0} broadcast(f32[64]{0} %reshape.14), dimensions={3}, metadata={op_type="AddV2" op_name="add_1"}
+  %add.27 = f32[1,220,220,64]{3,2,1,0} add(f32[1,220,220,64]{3,2,1,0} %convolution.25, f32[1,220,220,64]{3,2,1,0} %broadcast.26), metadata={op_type="AddV2" op_name="add_1"}
+  %constant.28 = f32[] constant(-inf), metadata={op_type="MaxPool" op_name="MaxPool2d"}
+  %reduce-window.33 = f32[1,219,219,64]{3,2,1,0} reduce-window(f32[1,220,220,64]{3,2,1,0} %add.27, f32[] %constant.28), window={size=1x2x2x1}, to_apply=%max_F32.29, metadata={op_type="MaxPool" op_name="MaxPool2d"}
+  %maximum.36 = f32[1,219,219,64]{3,2,1,0} maximum(f32[1,219,219,64]{3,2,1,0} %broadcast.35, f32[1,219,219,64]{3,2,1,0} %reduce-window.33), metadata={op_type="Relu" op_name="Relu_1"}
+  %reshape.39 = f32[47961,64]{1,0} reshape(f32[1,219,219,64]{3,2,1,0} %maximum.36), inferred_dimension=0, metadata={op_type="Reshape" op_name="Reshape"}
+  %arg5.6 = f32[64,128]{1,0} parameter(5), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.15 = f32[64,128]{1,0} reshape(f32[64,128]{1,0} %arg5.6)
+  %reshape.37 = f32[64,128]{1,0} reshape(f32[64,128]{1,0} %reshape.15), inferred_dimension=1, metadata={op_type="Reshape" op_name="Reshape_1"}
+  %dot.40 = f32[47961,128]{1,0} dot(f32[47961,64]{1,0} %reshape.39, f32[64,128]{1,0} %reshape.37), lhs_contracting_dims={1}, rhs_contracting_dims={0}, metadata={op_type="MatMul" op_name="MatMul"}
+  %reshape.41 = f32[1,219,219,128]{3,2,1,0} reshape(f32[47961,128]{1,0} %dot.40), metadata={op_type="Reshape" op_name="Reshape_2"}
+  %add.43 = f32[1,219,219,128]{3,2,1,0} add(f32[1,219,219,128]{3,2,1,0} %broadcast.42, f32[1,219,219,128]{3,2,1,0} %reshape.41), metadata={op_type="AddV2" op_name="add_2"}
+  %maximum.46 = f32[1,219,219,128]{3,2,1,0} maximum(f32[1,219,219,128]{3,2,1,0} %broadcast.45, f32[1,219,219,128]{3,2,1,0} %add.43), metadata={op_type="Relu" op_name="Relu_2"}
+  %reshape.47 = f32[47961,128]{1,0} reshape(f32[1,219,219,128]{3,2,1,0} %maximum.46), inferred_dimension=0, metadata={op_type="Reshape" op_name="Reshape_3"}
+  %arg7.8 = f32[128,100]{1,0} parameter(7), parameter_replication={false}, metadata={op_name="XLA_Args"}
+  %reshape.17 = f32[128,100]{1,0} reshape(f32[128,100]{1,0} %arg7.8)
+  %reshape.38 = f32[128,100]{1,0} reshape(f32[128,100]{1,0} %reshape.17), inferred_dimension=1, metadata={op_type="Reshape" op_name="Reshape_4"}
+  %dot.48 = f32[47961,100]{1,0} dot(f32[47961,128]{1,0} %reshape.47, f32[128,100]{1,0} %reshape.38), lhs_contracting_dims={1}, rhs_contracting_dims={0}, metadata={op_type="MatMul" op_name="MatMul_1"}
+  %reshape.49 = f32[1,219,219,100]{3,2,1,0} reshape(f32[47961,100]{1,0} %dot.48), metadata={op_type="Reshape" op_name="Reshape_5"}
+  %add.51 = f32[1,219,219,100]{3,2,1,0} add(f32[1,219,219,100]{3,2,1,0} %broadcast.50, f32[1,219,219,100]{3,2,1,0} %reshape.49), metadata={op_type="AddV2" op_name="add_3"}
+  %constant.52 = f32[] constant(-inf), metadata={op_type="Softmax" op_name="Softmax"}
+  %reduce.57 = f32[1,219,219]{2,1,0} reduce(f32[1,219,219,100]{3,2,1,0} %add.51, f32[] %constant.52), dimensions={3}, to_apply=%max_float_.53, metadata={op_type="Softmax" op_name="Softmax"}
+  %broadcast.58 = f32[1,219,219,100]{3,2,1,0} broadcast(f32[1,219,219]{2,1,0} %reduce.57), dimensions={0,1,2}, metadata={op_type="Softmax" op_name="Softmax"}
+  %subtract.59 = f32[1,219,219,100]{3,2,1,0} subtract(f32[1,219,219,100]{3,2,1,0} %add.51, f32[1,219,219,100]{3,2,1,0} %broadcast.58), metadata={op_type="Softmax" op_name="Softmax"}
+  %exponential.60 = f32[1,219,219,100]{3,2,1,0} exponential(f32[1,219,219,100]{3,2,1,0} %subtract.59), metadata={op_type="Softmax" op_name="Softmax"}
+  %convert.61 = f32[1,219,219,100]{3,2,1,0} convert(f32[1,219,219,100]{3,2,1,0} %exponential.60), metadata={op_type="Softmax" op_name="Softmax"}
+  %constant.62 = f32[] constant(0), metadata={op_type="Softmax" op_name="Softmax"}
+  %reduce.67 = f32[1,219,219]{2,1,0} reduce(f32[1,219,219,100]{3,2,1,0} %convert.61, f32[] %constant.62), dimensions={3}, to_apply=%add_float_.63, metadata={op_type="Softmax" op_name="Softmax"}
+  %convert.68 = f32[1,219,219]{2,1,0} convert(f32[1,219,219]{2,1,0} %reduce.67), metadata={op_type="Softmax" op_name="Softmax"}
+  %broadcast.69 = f32[1,219,219,100]{3,2,1,0} broadcast(f32[1,219,219]{2,1,0} %convert.68), dimensions={0,1,2}, metadata={op_type="Softmax" op_name="Softmax"}
+  %divide.70 = f32[1,219,219,100]{3,2,1,0} divide(f32[1,219,219,100]{3,2,1,0} %exponential.60, f32[1,219,219,100]{3,2,1,0} %broadcast.69), metadata={op_type="Softmax" op_name="Softmax"}
+  %reshape.71 = f32[1,219,219,100]{3,2,1,0} reshape(f32[1,219,219,100]{3,2,1,0} %divide.70), metadata={op_name="XLA_Retvals"}
+  %tuple.72 = (f32[1,219,219,100]{3,2,1,0}) tuple(f32[1,219,219,100]{3,2,1,0} %reshape.71), metadata={op_name="XLA_Retvals"}
+  ROOT %get-tuple-element.73 = f32[1,219,219,100]{3,2,1,0} get-tuple-element((f32[1,219,219,100]{3,2,1,0}) %tuple.72), index=0, metadata={op_name="XLA_Retvals"}
+}
+)";
 
-  auto add_builder_body = add_builder.AddInstruction(HloInstruction::CreateBinary(scalar_shape, HloOpcode::kAdd, add_lhs, add_rhs));
-
-  auto add_computation = hlo_module->AddEmbeddedComputation(add_builder.Build());
-
-  HloComputation::Builder builder(TestName());
-
-  auto param_0_shape = ShapeUtil::MakeShape(spec.primitive_type, {1, 224, 224, 1});
-  auto param_1_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3, 1, 32});
-  auto param_2_shape = ShapeUtil::MakeShape(spec.primitive_type, {32});
-  auto param_3_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3, 32, 64});
-  auto param_4_shape = ShapeUtil::MakeShape(spec.primitive_type, {64});
-  auto param_5_shape = ShapeUtil::MakeShape(spec.primitive_type, {64, 128});
-  auto param_6_shape = ShapeUtil::MakeShape(spec.primitive_type, {128});
-  auto param_7_shape = ShapeUtil::MakeShape(spec.primitive_type, {128, 100});
-  auto param_8_shape = ShapeUtil::MakeShape(spec.primitive_type, {100});
-
-  HloInstruction* I = builder.AddInstruction(
-      HloInstruction::CreateParameter(0, param_0_shape, "input"));
-  HloInstruction* K1 = builder.AddInstruction(
-      HloInstruction::CreateParameter(1, param_1_shape, "input"));
-  HloInstruction* B1 = builder.AddInstruction(
-      HloInstruction::CreateParameter(2, param_2_shape, "input"));
-  HloInstruction* K2 = builder.AddInstruction(
-      HloInstruction::CreateParameter(3, param_3_shape, "input"));
-  HloInstruction* B2 = builder.AddInstruction(
-      HloInstruction::CreateParameter(4, param_4_shape, "input"));
-  HloInstruction* K3 = builder.AddInstruction(
-      HloInstruction::CreateParameter(5, param_5_shape, "input"));
-  HloInstruction* B3 = builder.AddInstruction(
-      HloInstruction::CreateParameter(6, param_6_shape, "input"));
-  HloInstruction* K4 = builder.AddInstruction(
-      HloInstruction::CreateParameter(7, param_7_shape, "input"));
-  HloInstruction* B4 = builder.AddInstruction(
-      HloInstruction::CreateParameter(8, param_8_shape, "input"));
-
-  auto reshape_18 = builder.AddInstruction(HloInstruction::CreateReshape(B4->shape(), B4));
-
-  auto shape_50 = Shape();
-  shape_50.set_element_type(spec.primitive_type);
-  shape_50.add_dimensions(1);
-  shape_50.add_dimensions(219);
-  shape_50.add_dimensions(219);
-  shape_50.add_dimensions(100);
-  auto broadcast_50 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_50, reshape_18, {3}));
-
-  auto constant_44 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(0)));
-
-  auto shape_45 = Shape();
-  shape_45.set_element_type(spec.primitive_type);
-  shape_45.add_dimensions(1);
-  shape_45.add_dimensions(219);
-  shape_45.add_dimensions(219);
-  shape_45.add_dimensions(128);
-  auto broadcast_45 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_45, constant_44, {}));
-
-  auto reshape_16 = builder.AddInstruction(HloInstruction::CreateReshape(B3->shape(), B3));
-
-  auto shape_42 = Shape();
-  shape_42.set_element_type(spec.primitive_type);
-  shape_42.add_dimensions(1);
-  shape_42.add_dimensions(219);
-  shape_42.add_dimensions(219);
-  shape_42.add_dimensions(128);
-  auto broadcast_42 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_42, reshape_16, {3}));
-
-  auto constant_34 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(0)));
-
-  auto shape_35 = Shape();
-  shape_35.set_element_type(spec.primitive_type);
-  shape_35.add_dimensions(1);
-  shape_35.add_dimensions(219);
-  shape_35.add_dimensions(219);
-  shape_35.add_dimensions(64);
-  auto broadcast_35 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_35, constant_34, {}));
-
-  auto constant_22 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(0)));
-
-  auto shape_23 = Shape();
-  shape_23.set_element_type(spec.primitive_type);
-  shape_23.add_dimensions(1);
-  shape_23.add_dimensions(222);
-  shape_23.add_dimensions(222);
-  shape_23.add_dimensions(32);
-  auto broadcast_23 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_23, constant_22, {}));
-
-  auto reshape_10 = builder.AddInstruction(HloInstruction::CreateReshape(I->shape(), I));
-
-  auto reshape_11 = builder.AddInstruction(HloInstruction::CreateReshape(K1->shape(), K1));
-
-  auto shape_19 = Shape();
-  shape_19.set_element_type(spec.primitive_type);
-  shape_19.add_dimensions(1);
-  shape_19.add_dimensions(222);
-  shape_19.add_dimensions(222);
-  shape_19.add_dimensions(32);
-  Window window_19;
-  WindowDimension* dim_19_1 = window_19.add_dimensions();
-  dim_19_1->set_size(3);
-  dim_19_1->set_padding_low(0);
-  dim_19_1->set_padding_high(0);
-  dim_19_1->set_stride(1);
-  dim_19_1->set_window_dilation(1);
-  dim_19_1->set_base_dilation(1);
-  dim_19_1->set_window_reversal(false);
-  WindowDimension* dim_19_2 = window_19.add_dimensions();
-  dim_19_2->set_size(3);
-  dim_19_2->set_padding_low(0);
-  dim_19_2->set_padding_high(0);
-  dim_19_2->set_stride(1);
-  dim_19_2->set_window_dilation(1);
-  dim_19_2->set_base_dilation(1);
-  dim_19_2->set_window_reversal(false);
-  ConvolutionDimensionNumbers dnums_19;
-  dnums_19.set_input_batch_dimension(0);
-  dnums_19.add_input_spatial_dimensions(1);
-  dnums_19.add_input_spatial_dimensions(2);
-  dnums_19.set_input_feature_dimension(3);
-  dnums_19.add_kernel_spatial_dimensions(0);
-  dnums_19.add_kernel_spatial_dimensions(1);
-  dnums_19.set_kernel_input_feature_dimension(2);
-  dnums_19.set_kernel_output_feature_dimension(3);
-  dnums_19.set_output_batch_dimension(0);
-  dnums_19.add_output_spatial_dimensions(1);
-  dnums_19.add_output_spatial_dimensions(2);
-  dnums_19.set_output_feature_dimension(3);
-  PrecisionConfig precision_config_19;
-  precision_config_19.mutable_operand_precision()->Resize(
-      /*new_size=*/2, PrecisionConfig::DEFAULT);
-  auto convolution_19 = builder.AddInstruction(HloAllGatherInstruction::CreateConvolve(shape_19, reshape_10, reshape_11, 1, 1, window_19, dnums_19, precision_config_19));
-
-  auto reshape_12 = builder.AddInstruction(HloInstruction::CreateReshape(B1->shape(), B1));
-
-  auto shape_20 = Shape();
-  shape_20.set_element_type(spec.primitive_type);
-  shape_20.add_dimensions(1);
-  shape_20.add_dimensions(222);
-  shape_20.add_dimensions(222);
-  shape_20.add_dimensions(32);
-  auto broadcast_20 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_20, reshape_12, {3}));
-
-  auto add_21 = builder.AddInstruction(HloInstruction::CreateBinary(convolution_19->shape(), HloOpcode::kAdd, convolution_19, broadcast_20));
-
-  auto maximum_24 = builder.AddInstruction(HloInstruction::CreateBinary(broadcast_23->shape(), HloOpcode::kMaximum, broadcast_23, add_21));
-
-  auto reshape_13 = builder.AddInstruction(HloInstruction::CreateReshape(K2->shape(), K2));
-
-  auto shape_25 = Shape();
-  shape_25.set_element_type(spec.primitive_type);
-  shape_25.add_dimensions(1);
-  shape_25.add_dimensions(220);
-  shape_25.add_dimensions(220);
-  shape_25.add_dimensions(64);
-  Window window_25;
-  WindowDimension* dim_25_1 = window_25.add_dimensions();
-  dim_25_1->set_size(3);
-  dim_25_1->set_padding_low(0);
-  dim_25_1->set_padding_high(0);
-  dim_25_1->set_stride(1);
-  dim_25_1->set_window_dilation(1);
-  dim_25_1->set_base_dilation(1);
-  dim_25_1->set_window_reversal(false);
-  WindowDimension* dim_25_2 = window_25.add_dimensions();
-  dim_25_2->set_size(3);
-  dim_25_2->set_padding_low(0);
-  dim_25_2->set_padding_high(0);
-  dim_25_2->set_stride(1);
-  dim_25_2->set_window_dilation(1);
-  dim_25_2->set_base_dilation(1);
-  dim_25_2->set_window_reversal(false);
-  ConvolutionDimensionNumbers dnums_25;
-  dnums_25.set_input_batch_dimension(0);
-  dnums_25.add_input_spatial_dimensions(1);
-  dnums_25.add_input_spatial_dimensions(2);
-  dnums_25.set_input_feature_dimension(3);
-  dnums_25.add_kernel_spatial_dimensions(0);
-  dnums_25.add_kernel_spatial_dimensions(1);
-  dnums_25.set_kernel_input_feature_dimension(2);
-  dnums_25.set_kernel_output_feature_dimension(3);
-  dnums_25.set_output_batch_dimension(0);
-  dnums_25.add_output_spatial_dimensions(1);
-  dnums_25.add_output_spatial_dimensions(2);
-  dnums_25.set_output_feature_dimension(3);
-  PrecisionConfig precision_config_25;
-  precision_config_25.mutable_operand_precision()->Resize(
-      /*new_size=*/2, PrecisionConfig::DEFAULT);
-  auto convolution_25 = builder.AddInstruction(HloAllGatherInstruction::CreateConvolve(shape_25, maximum_24, reshape_13, 1, 1, window_25, dnums_25, precision_config_25));
-
-  auto reshape_14 = builder.AddInstruction(HloInstruction::CreateReshape(B2->shape(), B2));
-
-  auto shape_26 = Shape();
-  shape_26.set_element_type(spec.primitive_type);
-  shape_26.add_dimensions(1);
-  shape_26.add_dimensions(220);
-  shape_26.add_dimensions(220);
-  shape_26.add_dimensions(64);
-  auto broadcast_26 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_26, reshape_14, {3}));
-
-  auto add_27 = builder.AddInstruction(HloInstruction::CreateBinary(convolution_25->shape(), HloOpcode::kAdd, convolution_25, broadcast_26));
-
-
-  // Max pool
-
-   auto constant_28 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::MinValue(spec.primitive_type)));
-
-   auto shape_33 = Shape();
-   shape_33.set_element_type(spec.primitive_type);
-   shape_33.add_dimensions(1);
-   shape_33.add_dimensions(219);
-   shape_33.add_dimensions(219);
-   shape_33.add_dimensions(64);
-   Window window_33;
-   WindowDimension* dim_33_1 = window_33.add_dimensions();
-   dim_33_1->set_size(1);
-   dim_33_1->set_padding_low(0);
-   dim_33_1->set_padding_high(0);
-   dim_33_1->set_stride(1);
-   dim_33_1->set_window_dilation(1);
-   dim_33_1->set_base_dilation(1);
-   dim_33_1->set_window_reversal(false);
-   WindowDimension* dim_33_2 = window_33.add_dimensions();
-   dim_33_2->set_size(2);
-   dim_33_2->set_padding_low(0);
-   dim_33_2->set_padding_high(0);
-   dim_33_2->set_stride(1);
-   dim_33_2->set_window_dilation(1);
-   dim_33_2->set_base_dilation(1);
-   dim_33_2->set_window_reversal(false);
-   WindowDimension* dim_33_3 = window_33.add_dimensions();
-   dim_33_3->set_size(2);
-   dim_33_3->set_padding_low(0);
-   dim_33_3->set_padding_high(0);
-   dim_33_3->set_stride(1);
-   dim_33_3->set_window_dilation(1);
-   dim_33_3->set_base_dilation(1);
-   dim_33_3->set_window_reversal(false);
-   WindowDimension* dim_33_4 = window_33.add_dimensions();
-   dim_33_4->set_size(1);
-   dim_33_4->set_padding_low(0);
-   dim_33_4->set_padding_high(0);
-   dim_33_4->set_stride(1);
-   dim_33_4->set_window_dilation(1);
-   dim_33_4->set_base_dilation(1);
-   dim_33_4->set_window_reversal(false);
-   auto reduce_window_33 = builder.AddInstruction(HloInstruction::CreateReduceWindow(shape_33, add_27, constant_28, window_33, max_computation));  
-
-  auto maximum_36 = builder.AddInstruction(HloInstruction::CreateBinary(broadcast_35->shape(), HloOpcode::kMaximum, broadcast_35, reduce_window_33));
-
-  auto shape_39 = Shape();
-  shape_39.set_element_type(spec.primitive_type);
-  shape_39.add_dimensions(47961);
-  shape_39.add_dimensions(64);
-  auto reshape_39 = builder.AddInstruction(HloInstruction::CreateReshape(shape_39, maximum_36));
-
-  auto reshape_15 = builder.AddInstruction(HloInstruction::CreateReshape(K3->shape(), K3));
-  auto reshape_37 = builder.AddInstruction(HloInstruction::CreateReshape(reshape_15->shape(), reshape_15));
-
-  auto shape_40 = Shape();
-  shape_40.set_element_type(spec.primitive_type);
-  shape_40.add_dimensions(47961);
-  shape_40.add_dimensions(128);
-  DotDimensionNumbers dnums_40;
-  dnums_40.add_lhs_contracting_dimensions(1);
-  dnums_40.add_rhs_contracting_dimensions(0);
-  PrecisionConfig precision_config_40;
-  precision_config_40.mutable_operand_precision()->Resize(
-      /*new_size=*/2, PrecisionConfig::DEFAULT);
-  auto dot_40 = builder.AddInstruction(HloInstruction::CreateDot(shape_40, reshape_39, reshape_37, dnums_40, precision_config_40));
-
-  auto shape_41 = Shape();
-  shape_41.set_element_type(spec.primitive_type);
-  shape_41.add_dimensions(1);
-  shape_41.add_dimensions(219);
-  shape_41.add_dimensions(219);
-  shape_41.add_dimensions(128);
-  auto reshape_41 = builder.AddInstruction(HloInstruction::CreateReshape(shape_41, dot_40));
-
-  auto add_43 = builder.AddInstruction(HloInstruction::CreateBinary(broadcast_42->shape(), HloOpcode::kAdd, broadcast_42, reshape_41));
-
-  auto maximum_46 = builder.AddInstruction(HloInstruction::CreateBinary(broadcast_45->shape(), HloOpcode::kMaximum, broadcast_45, add_43));
-
-  auto shape_47 = Shape();
-  shape_47.set_element_type(spec.primitive_type);
-  shape_47.add_dimensions(47961);
-  shape_47.add_dimensions(128);
-  auto reshape_47 = builder.AddInstruction(HloInstruction::CreateReshape(shape_47, maximum_46));
-
-  auto reshape_17 = builder.AddInstruction(HloInstruction::CreateReshape(K4->shape(), K4));
-  auto reshape_38 = builder.AddInstruction(HloInstruction::CreateReshape(reshape_17->shape(), reshape_17));
-
-  auto shape_48 = Shape();
-  shape_48.set_element_type(spec.primitive_type);
-  shape_48.add_dimensions(47961);
-  shape_48.add_dimensions(100);
-  DotDimensionNumbers dnums_48;
-  dnums_48.add_lhs_contracting_dimensions(1);
-  dnums_48.add_rhs_contracting_dimensions(0);
-  PrecisionConfig precision_config_48;
-  precision_config_48.mutable_operand_precision()->Resize(
-      /*new_size=*/2, PrecisionConfig::DEFAULT);
-  auto dot_48 = builder.AddInstruction(HloInstruction::CreateDot(shape_48, reshape_47, reshape_38, dnums_48, precision_config_48));
-
-  auto shape_49 = Shape();
-  shape_49.set_element_type(spec.primitive_type);
-  shape_49.add_dimensions(1);
-  shape_49.add_dimensions(219);
-  shape_49.add_dimensions(219);
-  shape_49.add_dimensions(100);
-  auto reshape_49 = builder.AddInstruction(HloInstruction::CreateReshape(shape_49, dot_48));
-
-  auto add_51 = builder.AddInstruction(HloInstruction::CreateBinary(broadcast_50->shape(), HloOpcode::kAdd, broadcast_50, reshape_49));
-
-  auto constant_52 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::MinValue(spec.primitive_type)));
-
-  auto shape_57 = Shape();
-  shape_57.set_element_type(spec.primitive_type);
-  shape_57.add_dimensions(1);
-  shape_57.add_dimensions(219);
-  shape_57.add_dimensions(219);
-  absl::Span<const int64> dims_57 = {3};
-  auto reduce_57 = builder.AddInstruction(HloInstruction::CreateReduce(shape_57, add_51, constant_52, dims_57, max_computation));
-
-  auto shape_58 = Shape();
-  shape_58.set_element_type(spec.primitive_type);
-  shape_58.add_dimensions(1);
-  shape_58.add_dimensions(219);
-  shape_58.add_dimensions(219);
-  shape_58.add_dimensions(100);
-  auto broadcast_58 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_58, reduce_57, {0, 1, 2}));
-
-  auto subtract_59 = builder.AddInstruction(HloInstruction::CreateBinary(add_51->shape(), HloOpcode::kSubtract, add_51, broadcast_58)); 
-
-  auto exponential_60 = builder.AddInstruction(HloInstruction::CreateUnary(subtract_59->shape(), HloOpcode::kExp, subtract_59));
-
-  auto convert_61 = builder.AddInstruction(HloInstruction::CreateConvert(exponential_60->shape(), exponential_60));
-
-  auto constant_62 = builder.AddInstruction(HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(0))); 
-
-  auto shape_67 = Shape();
-  shape_67.set_element_type(spec.primitive_type);
-  shape_67.add_dimensions(1);
-  shape_67.add_dimensions(219);
-  shape_67.add_dimensions(219);
-  absl::Span<const int64> dims_67 = {3};
-  auto reduce_67 = builder.AddInstruction(HloInstruction::CreateReduce(shape_67, convert_61, constant_62, dims_67, add_computation));
-
-  auto convert_68 = builder.AddInstruction(HloInstruction::CreateConvert(reduce_67->shape(), reduce_67));
-
-  auto shape_69 = Shape();
-  shape_69.set_element_type(spec.primitive_type);
-  shape_69.add_dimensions(1);
-  shape_69.add_dimensions(219);
-  shape_69.add_dimensions(219);
-  shape_69.add_dimensions(100);
-  auto broadcast_69 = builder.AddInstruction(HloInstruction::CreateBroadcast(shape_69, convert_68, {0, 1, 2}));
-
-  auto subtract_70 = builder.AddInstruction(HloInstruction::CreateBinary(exponential_60->shape(), HloOpcode::kDivide, exponential_60, broadcast_69));
-
-  auto reshape_71 = builder.AddInstruction(HloInstruction::CreateReshape(subtract_70->shape(), subtract_70));
-
-  hlo_module->AddEntryComputation(builder.Build());
+  hlo_module->ParseHloStringAndVerifyModule(hlo_text); 
 
   CompileAndCheck(std::move(hlo_module), spec.filecheck_lines);
 }
