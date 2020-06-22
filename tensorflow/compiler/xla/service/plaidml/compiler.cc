@@ -458,7 +458,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           // TODO: take dims and figure out layout 
           // padding defaults to valid, test same padding and manual padding 
           // auto padding_config = instruction->padding_config();
-          op = op.autopad_mode(plaidml_op::AutoPadMode::VALID);
+          op.autopad_mode(plaidml_op::AutoPadMode::VALID);
           // Window
           auto raw_window = instruction->window();
           std::vector<int> window_size;
@@ -472,9 +472,9 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
               dilations.push_back(d.base_dilation());
             }
           }
-          op = op.filter_shape(window_size);
-          op = op.strides(strides);
-          op = op.dilations(dilations);
+          op.filter_shape(window_size);
+            .strides(strides);
+            .dilations(dilations);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
