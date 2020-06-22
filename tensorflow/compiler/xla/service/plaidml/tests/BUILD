@@ -23,7 +23,6 @@ tf_cc_test(
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
-#        "//tensorflow/compiler/xla/service/cpu:cpu_compiler",
         "//tensorflow/compiler/xla/service/plaidml:compiler",
         "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
         "//tensorflow/compiler/xla/tests:test_utils",
@@ -114,27 +113,8 @@ tf_cc_test(
 )
 
 tf_cc_test(
-    name = "resnext_test",
-    srcs = ["resnext_test.cc"],
-    extra_copts = ["-fexceptions"],
-    deps = [
-        "//tensorflow/compiler/xla/service:hlo",
-        "//tensorflow/compiler/xla/service/plaidml:compiler",
-        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
-        "//tensorflow/compiler/xla/tests:test_utils",
-        "//tensorflow/compiler/xla/tests:hlo_test_base",
-        "//tensorflow/core:framework",
-        "//tensorflow/core:lib",
-        "//tensorflow/core:test",
-        "//tensorflow/core:test_main",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
-tf_cc_test(
-    name = "plaidml_trivial_model_test",
-    srcs = ["plaidml_trivial_model_test.cc"],
+    name = "plaidml_resnext_test",
+    srcs = ["plaidml_resnext_test.cc"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
