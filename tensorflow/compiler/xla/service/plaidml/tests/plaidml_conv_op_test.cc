@@ -13,10 +13,14 @@
 #include "tensorflow/compiler/xla/tests/test_utils.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
+using ::plaidml::edsl::TensorBuffers;
 
 namespace xla {
 namespace plaidml {
 namespace {
+
+using TestCaseVal = std::vector<std::vector<float>>;
+using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
 
 struct ConvTestSpec {
   PrimitiveType primitive_type;
@@ -32,9 +36,11 @@ class PlaidMLConvOperationTest
       public ::testing::WithParamInterface<ConvTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloComputation> entry_computation,
-                       const string& filecheck_lines) {
+                         const string& filecheck_lines,
+                         const TestCasePairs& testcase_pairs) {
+    HloModuleConfig cfg;
 
-    std::unique_ptr<HloModule> hlo_module = CreateNewVerifiedModule();
+    std::unique_ptr<HloModule> hlo_module = absl::make_unique<HloModule>("module", cfg);
     hlo_module->AddEntryComputation(std::move(entry_computation));
 
     auto program = CompileToProgram(std::move(hlo_module));
@@ -46,17 +52,56 @@ class PlaidMLConvOperationTest
     //TF_ASSERT_OK(fc_result.status());
     EXPECT_TRUE(fc_result.ValueOrDie());
 
+    VLOG(2) << "Evaluating results";
+
+    for (auto pair : testcase_pairs) {
+
+      TensorBuffers inp;
+      TensorBuffers exp;
+
+      auto program_inputs = program->inputs();
+
+      for (auto i = 0; i < program_inputs.size(); i++) {
+        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
+      }
+
+      auto program_outputs = program->outputs();
+
+      for (auto i = 0; i < program_outputs.size(); i++) {
+        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
+      }
+
+      checkProgram(*program, inp, exp);
+
+    }
+
     return Status::OK();
 
   }
 };
 
 TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
-  HloComputation::Builder builder(TestName());
+  std::vector<float> input_val = {0.05,  0.05,  0.05,  0.05,  0.05,  //
+                                  0.025, 0.025, 0.025, 0.025, 0.025, //
+                                  0.01,  0.01,  0.01,  0.01,  0.01,  //
+                                  0.025, 0.025, 0.025, 0.025, 0.025, //
+                                  0.05,  0.05,  0.05,  0.05,  0.05};
+  std::vector<float> kernel_val = {1, 1, 1, //
+                                   1, 0, 1, //
+                                   1, 1, 1};
+  std::vector<float> expected_val = {0.23, 0.23, 0.23, //
+                                     0.17, 0.17, 0.17, //
+                                     0.23, 0.23, 0.23};
+
+  TestCaseVal inputs = {kernel_val, input_val};
+  TestCaseVal results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("SimpleConvOp");
   ConvTestSpec spec = GetParam();
 
-  auto input_shape = ShapeUtil::MakeShape(spec.primitive_type, {1, 224, 224, 1});
-  auto kernel_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3, 1, 32});
+  auto input_shape = ShapeUtil::MakeShape(spec.primitive_type, {1, 5, 5, 1});
+  auto kernel_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3, 1, 1});
 
   HloInstruction* input = builder.AddInstruction(
       HloInstruction::CreateParameter(0, input_shape, "input"));
@@ -66,9 +111,9 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
   auto conv_shape = Shape();
   conv_shape.set_element_type(spec.primitive_type);
   conv_shape.add_dimensions(1);
-  conv_shape.add_dimensions(222);
-  conv_shape.add_dimensions(222);
-  conv_shape.add_dimensions(32);
+  conv_shape.add_dimensions(3);
+  conv_shape.add_dimensions(3);
+  conv_shape.add_dimensions(1);
   Window conv_window;
   WindowDimension* conv_dim_1 = conv_window.add_dimensions();
   conv_dim_1->set_size(3);
@@ -104,18 +149,15 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
       /*new_size=*/2, PrecisionConfig::DEFAULT);
   auto convolution_19 = builder.AddInstruction(HloAllGatherInstruction::CreateConvolve(conv_shape, input, kernel, 1, 1, conv_window, conv_dnums, conv_pc));
 
-  CompileAndCheck(builder.Build(), spec.filecheck_lines);
+  CompileAndCheck(builder.Build(), spec.filecheck_lines, testcase_pairs);
 }
 
 std::vector<ConvTestSpec> GetConvTestCases() {
   std::vector<ConvTestSpec> result;
-// TODO: reenable F16 when it is ready
-//  result.push_back(
-//      {F16, R"(CHECK: func @hlo_module(%arg0: tensor<128x128xf32>, %arg1: tensor<128x128xf32>) -> tensor<128x128xf32>)"});
   result.push_back(
-      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x32xf32>, %arg1: tensor<1x224x224x1xf32>) -> tensor<1x222x222x32xf32>)"});
+      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x1xf32>, %arg1: tensor<1x5x5x1xf32>) -> tensor<1x3x3x1xf32>)"});
   result.push_back(
-      {F64, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x32xf32>, %arg1: tensor<1x224x224x1xf32>) -> tensor<1x222x222x32xf32>)"});
+      {F64, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x1xf32>, %arg1: tensor<1x5x5x1xf32>) -> tensor<1x3x3x1xf32>)"});
   return result;
 }
 
