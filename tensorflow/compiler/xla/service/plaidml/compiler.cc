@@ -472,8 +472,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
               dilations.push_back(d.base_dilation());
             }
           }
-          op.filter_shape(window_size);
-            .strides(strides);
+          op.filter_shape(window_size)
+            .strides(strides)
             .dilations(dilations);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;

@@ -75,6 +75,25 @@ tf_cc_test(
 )
 
 tf_cc_test(
+    name = "plaidml_i3d_test",
+    srcs = ["plaidml_i3d_test.cc"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
     name = "plaidml_mnist_cnn_test",
     srcs = ["plaidml_mnist_cnn_test.cc"],
     extra_copts = ["-fexceptions"],
