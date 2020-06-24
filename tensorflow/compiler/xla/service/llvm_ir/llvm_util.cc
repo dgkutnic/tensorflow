@@ -1,11 +1,8 @@
 /* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +19,7 @@ limitations under the License.
 #include "absl/base/casts.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
@@ -90,10 +88,8 @@ llvm::CallInst* EmitCallToIntrinsic(
 }
 
 llvm::Value* EmitFloatMax(llvm::Value* lhs_value, llvm::Value* rhs_value,
-                          llvm::IRBuilder<>* b) {
-  // TODO(tpopp): Pass this information down from the HLO's ModuleConfig.
-  if (b->getFastMathFlags().noNaNs() ||
-      GetDebugOptionsFromFlags().xla_cpu_enable_fast_min_max()) {
+                          llvm::IRBuilder<>* b, bool enable_fast_min_max) {
+  if (b->getFastMathFlags().noNaNs() || enable_fast_min_max) {
     auto cmp = b->CreateFCmpUGE(lhs_value, rhs_value);
     return b->CreateSelect(cmp, lhs_value, rhs_value);
   } else {
@@ -105,10 +101,8 @@ llvm::Value* EmitFloatMax(llvm::Value* lhs_value, llvm::Value* rhs_value,
 }
 
 llvm::Value* EmitFloatMin(llvm::Value* lhs_value, llvm::Value* rhs_value,
-                          llvm::IRBuilder<>* b) {
-  // TODO(tpopp): Pass this information down from the HLO's ModuleConfig.
-  if (b->getFastMathFlags().noNaNs() ||
-      GetDebugOptionsFromFlags().xla_cpu_enable_fast_min_max()) {
+                          llvm::IRBuilder<>* b, bool enable_fast_min_max) {
+  if (b->getFastMathFlags().noNaNs() || enable_fast_min_max) {
     auto cmp = b->CreateFCmpULE(lhs_value, rhs_value);
     return b->CreateSelect(cmp, lhs_value, rhs_value);
   } else {

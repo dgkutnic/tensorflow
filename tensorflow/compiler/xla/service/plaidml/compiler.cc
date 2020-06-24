@@ -455,26 +455,28 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           auto conv_dnums = instruction->convolution_dimension_numbers();
           auto input_spatial_dims = conv_dnums.input_spatial_dimensions();
           auto kernel_spatial_dims = conv_dnums.kernel_spatial_dimensions();
-          // TODO: take dims and figure out layout 
-          // padding defaults to valid, test same padding and manual padding 
-          // auto padding_config = instruction->padding_config();
-          op.autopad_mode(plaidml_op::AutoPadMode::VALID);
-          // Window
+          // This window, unlike pooling, only takes spatial dimensions into account
+          // TODO: smarter layout inference using convolution dnums
           auto raw_window = instruction->window();
+          auto spatial_rank = raw_window.dimensions_size();
           std::vector<int> window_size;
           std::vector<int> strides;
           std::vector<int> dilations;
-          for (auto d : raw_window.dimensions()) {
-            if (!window_util::IsTrivialWindowDimension(d)) {
-              VLOG(2) << "Nontrivial dimension: size " << d.size() << ", stride " << d.stride() << ", base dilation " << d.base_dilation() << ", window dilation " << d.window_dilation();
-              window_size.push_back(d.size());
-              strides.push_back(d.stride());
-              dilations.push_back(d.base_dilation());
-            }
+          std::vector<int> pads(2*spatial_rank);
+          for (int i = 0; i < spatial_rank; i++) {
+            auto d = raw_window.dimensions()[i];
+            VLOG(2) << "Spatial dimension: size " << d.size() << ", stride " << d.stride() << ", low pads " << d.padding_low() << ", high pads " << d.padding_high();
+            window_size.push_back(d.size());
+            strides.push_back(d.stride());
+            dilations.push_back(d.base_dilation());
+            pads[i] = d.padding_low();
+            pads[i + spatial_rank] = d.padding_high();
           }
           op.filter_shape(window_size)
             .strides(strides)
-            .dilations(dilations);
+            .dilations(dilations)
+            .autopad_mode(plaidml_op::AutoPadMode::NONE)
+            .manual_padding(pads);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
@@ -540,28 +542,24 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           // TODO: Find a better way to calculate spatial dimensions
           VLOG(2) << "begin processing reduce-window";
           Tensor op;
-          // Keras default pool mode and pad mode
-          // TODO: fix nondefault padding
+          // Default pool mode and pad mode
           plaidml_op::PoolMode pm = plaidml_op::PoolMode::AVG;
-          plaidml_op::AutoPadMode am = plaidml_op::AutoPadMode::VALID;
-          // This window is in NHWC format: for example, a window of 1x2x2x1 translates to {2, 2} in the pooling op
+          plaidml_op::AutoPadMode am = plaidml_op::AutoPadMode::NONE;
+          // This window is in NXC format: for example, a window of 1x2x2x1 translates to {2, 2} in the pooling op
+          // Spatial rank in this case has to take NXC into account, so subtract 2
           auto raw_window = instruction->window();
+          auto spatial_rank = raw_window.dimensions_size() - 2;
           std::vector<int> window_size;
           std::vector<int> strides;
-          for (auto d : raw_window.dimensions()) {
-            if (!window_util::IsTrivialWindowDimension(d)) {
-              VLOG(2) << "Nontrivial dimension: size " << d.size() << ", stride " << d.stride() << ", base dilation " << d.base_dilation() << ", window dilation " << d.window_dilation();
-              window_size.push_back(d.size());
-              strides.push_back(d.stride());
-            }
+          std::vector<int> pads(2*spatial_rank);
+          for (int i = 0; i < spatial_rank; i++) {
+            auto d = raw_window.dimensions()[i+1];
+            VLOG(2) << "Spatial dimension: size " << d.size() << ", stride " << d.stride() << ", low pads " << d.padding_low() << ", high pads " << d.padding_high();
+            window_size.push_back(d.size());
+            strides.push_back(d.stride());
+            pads[i] = d.padding_low();
+            pads[i + spatial_rank] = d.padding_high();
           }
-          /*
-          // IsTrivialWindowDimension doesn't work as expected on a test case. I'll hard code these values for now and re-visit.
-          window_size.push_back(raw_window.dimensions()[1].size());
-          window_size.push_back(raw_window.dimensions()[2].size());
-          strides[0] = raw_window.dimensions()[1].stride();
-          strides[1] = raw_window.dimensions()[2].stride();
-          */
           auto applied_computation = instruction->to_apply();
           if (computation_is_maximum(applied_computation)) {
             VLOG(2) << "Reached condition: max pooling";
@@ -571,33 +569,15 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
             pm = plaidml_op::PoolMode::SUM;
           }
           // TODO: Add conditions for avg pooling, sum pooling, etc.
-          op = plaidml_op::pool(instr_map[operand_ids[0]], pm, window_size, strides, am, {}, plaidml_op::TensorLayout::NXC);
+          op = plaidml_op::pool(instr_map[operand_ids[0]], pm, window_size, strides, am, pads, plaidml_op::TensorLayout::NXC);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
         case HloOpcode::kBroadcast: {
           auto op = instr_map[operand_ids[0]];
-          //auto operand_shape = instruction->operand(0)->shape();
-          auto instr_dims = instruction->dimensions();
-          std::vector<int> bcast_dims;
-          for (auto dim : instr_dims) {
-            bcast_dims.push_back(dim);
-          }
+          std::vector<int> result_shape(begin(dims), end(dims));
+          std::vector<int> bcast_dims (begin(instruction->dimensions()), end(instruction->dimensions()));
           op = plaidml_op::broadcast(instr_map[operand_ids[0]], dims, bcast_dims);
-          /*
-          // Check if numpy style broadcasting semantics exist
-          // Constants can always be broadcasted
-          // Assume that two tensors with the same rank can be broadcasted
-          // Dims can be prepended, cannot be appended
-          if (operand_shape.rank() && operand_shape.rank() != dims.size()) {
-            if (bcast_dims.size() == operand_shape.rank() && std::find(bcast_dims.begin(), bcast_dims.end(), dims.size() - 1) == bcast_dims.end()) {
-              // Broadcasting all dims, need to add 1 to the reshape
-              std::vector<int64_t> reshape_dims = dims;
-              reshape_dims[reshape_dims.size() - 1] = 1;
-              op = ::plaidml::edsl::reshape(op, reshape_dims);
-            }
-          }
-          */
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
