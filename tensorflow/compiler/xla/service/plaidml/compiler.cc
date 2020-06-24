@@ -619,14 +619,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         }
         case HloOpcode::kSlice: {
           // Tensor slice operation
+          auto op = plaidml_op::slice(instr_map[operand_ids[0]]);
           // Grab start points, end points, and strides
-          std::vector<Value> dims_slices;
           for (auto i = 0; i < dims.size(); i++) {
             VLOG(2) << "Slicing dimension " << i << " starting at index " << instruction->slice_starts(i) << " ending at index " << instruction->slice_limits(i) << " with stride " << instruction->slice_strides(i);
-            dims_slices.push_back(::plaidml::edsl::make_tuple(instruction->slice_starts(i), instruction->slice_limits(i), instruction->slice_strides(i)));
+            op.add_dim(instruction->slice_starts(i), instruction->slice_limits(i), instruction->slice_strides(i));
           }
-          auto args = ::plaidml::edsl::make_tuple(instr_map[operand_ids[0]], dims_slices);
-          auto op = plaidml_op::details::op("slice", args).as_tensor();
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
