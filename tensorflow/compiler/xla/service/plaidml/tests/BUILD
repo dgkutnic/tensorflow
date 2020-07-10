@@ -133,7 +133,27 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_resnext_test",
-    srcs = ["plaidml_resnext_test.cc"],
+    srcs = ["plaidml_resnext_test.cc", "resnext50_pretrained_inputs_and_weights.h"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core/platform:resource_loader",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
+    name = "resnext_test_old",
+    srcs = ["resnext_test_old.cc"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",

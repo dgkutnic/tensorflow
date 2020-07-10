@@ -254,6 +254,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         dims.push_back(shape.dimensions(j));
       }
       auto type = pml_dtype_map_[shape.element_type()];
+      // metadata
+      auto instr_metadata = instruction->metadata();
+      auto meta_name = cur_instr_name;
+      if (!instr_metadata.op_name().empty()) {
+            meta_name = instr_metadata.op_name();
+      }
       // TODO: validate that all these general parameters are correct before constructing them into a larger program.
       switch (instruction->opcode()) {
         case HloOpcode::kConstant: {
@@ -261,7 +267,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           auto lshape = LogicalShape(type, dims);
           const Literal& literal = instruction->literal();
           auto buf = makeBuffer(tshape, literal.untyped_data());
-          auto op = Constant(lshape, buf);
+          auto op = Constant(lshape, buf, meta_name);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
@@ -444,6 +450,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
             tensors.push_back(instr_map[operand_ids[i]]);
           }
           int concat_axis = instruction->concatenate_dimension();
+          VLOG(2) << "Concat axis " << concat_axis;
 	  auto op = plaidml_op::concatenate(tensors, concat_axis);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
@@ -476,7 +483,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
             .strides(strides)
             .dilations(dilations)
             .autopad_mode(plaidml_op::AutoPadMode::NONE)
-            .manual_padding(pads);
+            .manual_padding(pads)
+            .name(meta_name);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
@@ -577,7 +585,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           auto op = instr_map[operand_ids[0]];
           std::vector<int> result_shape(begin(dims), end(dims));
           std::vector<int> bcast_dims (begin(instruction->dimensions()), end(instruction->dimensions()));
-          op = plaidml_op::broadcast(instr_map[operand_ids[0]], dims, bcast_dims);
+          op = plaidml_op::broadcast(instr_map[operand_ids[0]], result_shape, bcast_dims);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
