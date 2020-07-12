@@ -8,7 +8,6 @@
 #include "absl/strings/str_cat.h"
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
-#include "tensorflow/compiler/xla/service/plaidml/tests/resnext50_pretrained_inputs_and_weights.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
@@ -17,16 +16,10 @@
 #include "tensorflow/compiler/xla/tests/test_utils.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
-#include "plaidml/testenv.h"
-
-using ::plaidml::edsl::TensorBuffers;
 
 namespace xla {
 namespace plaidml {
 namespace {
-
-using TestCaseVal = std::vector<std::vector<float>>;
-using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
 
 struct ResNeXTTestSpec {
   PrimitiveType primitive_type;
@@ -42,8 +35,7 @@ class PlaidMLResNeXTOperationTest
       public ::testing::WithParamInterface<ResNeXTTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloModule> hlo_module,
-                         const string& filecheck_lines,
-                         const TestCasePairs& testcase_pairs) {
+                       const string& filecheck_lines) {
 
     auto program = CompileToProgram(std::move(hlo_module));
 
@@ -52,351 +44,17 @@ class PlaidMLResNeXTOperationTest
     //TF_ASSERT_OK(fc_result.status());
     EXPECT_TRUE(fc_result.ValueOrDie());
 
-    VLOG(0) << "Evaluating results";
-
-    for (auto pair : testcase_pairs) {
-
-      TensorBuffers inp;
-      TensorBuffers exp;
-
-      auto program_inputs = program->inputs();
-
-      for (auto i = 0; i < program_inputs.size(); i++) {
-        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
-      }
-
-      auto program_outputs = program->outputs();
-
-      for (auto i = 0; i < program_outputs.size(); i++) {
-        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
-      }
-
-      VLOG(0) << "Calling checkProgram";
-
-      checkProgram(*program, inp, exp);
-
-    }
-
     return Status::OK();
 
   }
 };
 
 TEST_P(PlaidMLResNeXTOperationTest, SimpleResNeXT) {
-
-TestCaseVal ResNeXt50_WeightsInputs = {{0}, ::weights::stage4_unit3_bn3_mean, ::weights::stage4_unit3_bn3_scale, ::weights::stage4_unit3_bn3_var, {2e-05}, //
- ::weights::stage4_unit3_bn3_bias, ::weights::stage4_unit3_conv3_weight, {0}, ::weights::stage4_unit3_bn2_mean, ::weights::stage4_unit3_bn2_scale, {2e-05}, //
- ::weights::stage4_unit3_bn2_var, ::weights::stage4_unit3_bn2_bias, ::weights::stage4_unit3_conv2_weight, {0}, ::weights::stage4_unit3_bn1_mean, ::weights::stage4_unit3_bn1_scale, {2e-05}, //
- ::weights::stage4_unit3_bn1_var, ::weights::stage4_unit3_bn1_bias, ::weights::stage4_unit3_conv1_weight, {0}, ::weights::stage4_unit2_bn3_mean, ::weights::stage4_unit2_bn3_scale, {2e-05}, //
- ::weights::stage4_unit2_bn3_var, ::weights::stage4_unit2_bn3_bias, ::weights::stage4_unit2_conv3_weight, {0}, ::weights::stage4_unit2_bn2_mean, ::weights::stage4_unit2_bn2_scale, {2e-05}, //
- ::weights::stage4_unit2_bn2_var, ::weights::stage4_unit2_bn2_bias, ::weights::stage4_unit2_conv2_weight, {0}, ::weights::stage4_unit2_bn1_mean, ::weights::stage4_unit2_bn1_scale, {2e-05}, //
- ::weights::stage4_unit2_bn1_var, ::weights::stage4_unit2_bn1_bias, ::weights::stage4_unit2_conv1_weight, {0}, ::weights::stage4_unit1_sc_bn_mean, ::weights::stage4_unit1_sc_bn_scale, {2e-05}, //
- ::weights::stage4_unit1_sc_bn_var, ::weights::stage4_unit1_sc_bn_bias, ::weights::stage4_unit1_sc_weight, {0}, ::weights::stage3_unit6_bn3_mean, ::weights::stage3_unit6_bn3_scale, {2e-05}, //
- ::weights::stage3_unit6_bn3_var, ::weights::stage3_unit6_bn3_bias, ::weights::stage3_unit6_conv3_weight, {0}, ::weights::stage3_unit6_bn2_mean, ::weights::stage3_unit6_bn2_scale, {2e-05}, //
- ::weights::stage3_unit6_bn2_var, ::weights::stage3_unit6_bn2_bias, ::weights::stage3_unit6_conv2_weight, {0}, ::weights::stage3_unit6_bn1_mean, ::weights::stage3_unit6_bn1_scale, {2e-05}, //
- ::weights::stage3_unit6_bn1_var, ::weights::stage3_unit6_bn1_bias, ::weights::stage3_unit6_conv1_weight, {0}, ::weights::stage3_unit5_bn3_mean, ::weights::stage3_unit5_bn3_scale, {2e-05}, //
- ::weights::stage3_unit5_bn3_var, ::weights::stage3_unit5_bn3_bias, ::weights::stage3_unit5_conv3_weight, {0}, ::weights::stage3_unit5_bn2_mean, ::weights::stage3_unit5_bn2_scale, {2e-05}, //
- ::weights::stage3_unit5_bn2_var, ::weights::stage3_unit5_bn2_bias, ::weights::stage3_unit5_conv2_weight, {0}, ::weights::stage3_unit5_bn1_mean, ::weights::stage3_unit5_bn1_scale, {2e-05}, //
- ::weights::stage3_unit5_bn1_var, ::weights::stage3_unit5_bn1_bias, ::weights::stage3_unit5_conv1_weight, {0}, ::weights::stage3_unit4_bn3_mean, ::weights::stage3_unit4_bn3_scale, {2e-05}, //
- ::weights::stage3_unit4_bn3_var, ::weights::stage3_unit4_bn3_bias, ::weights::stage3_unit4_conv3_weight, {0}, ::weights::stage3_unit4_bn2_mean, ::weights::stage3_unit4_bn2_scale, {2e-05}, //
- ::weights::stage3_unit4_bn2_var, ::weights::stage3_unit4_bn2_bias, ::weights::stage3_unit4_conv2_weight, {0}, ::weights::stage3_unit4_bn1_mean, ::weights::stage3_unit4_bn1_scale, {2e-05}, //
- ::weights::stage3_unit4_bn1_var, ::weights::stage3_unit4_bn1_bias, ::weights::stage3_unit4_conv1_weight, {0}, ::weights::stage3_unit3_bn3_mean, ::weights::stage3_unit3_bn3_scale, {2e-05}, //
- ::weights::stage3_unit3_bn3_var, ::weights::stage3_unit3_bn3_bias, ::weights::stage3_unit3_conv3_weight, {0}, ::weights::stage3_unit3_bn2_mean, ::weights::stage3_unit3_bn2_scale, {2e-05}, //
- ::weights::stage3_unit3_bn2_var, ::weights::stage3_unit3_bn2_bias, ::weights::stage3_unit3_conv2_weight, {0}, ::weights::stage3_unit3_bn1_mean, ::weights::stage3_unit3_bn1_scale, {2e-05}, //
- ::weights::stage3_unit3_bn1_var, ::weights::stage3_unit3_bn1_bias, ::weights::stage3_unit3_conv1_weight, {0}, ::weights::stage3_unit2_bn3_mean, ::weights::stage3_unit2_bn3_scale, {2e-05}, //
- ::weights::stage3_unit2_bn3_var, ::weights::stage3_unit2_bn3_bias, ::weights::stage3_unit2_conv3_weight, {0}, ::weights::stage3_unit2_bn2_mean, ::weights::stage3_unit2_bn2_scale, {2e-05}, //
- ::weights::stage3_unit2_bn2_var, ::weights::stage3_unit2_bn2_bias, ::weights::stage3_unit2_conv2_weight, {0}, ::weights::stage3_unit2_bn1_mean, ::weights::stage3_unit2_bn1_scale, {2e-05}, //
- ::weights::stage3_unit2_bn1_var, ::weights::stage3_unit2_bn1_bias, ::weights::stage3_unit2_conv1_weight, {0}, ::weights::stage3_unit1_sc_bn_mean, ::weights::stage3_unit1_sc_bn_scale, {2e-05}, //
- ::weights::stage3_unit1_sc_bn_var, ::weights::stage3_unit1_sc_bn_bias, ::weights::stage3_unit1_sc_weight, {0}, ::weights::stage2_unit4_bn3_mean, ::weights::stage2_unit4_bn3_scale, {2e-05}, //
- ::weights::stage2_unit4_bn3_var, ::weights::stage2_unit4_bn3_bias, ::weights::stage2_unit4_conv3_weight, {0}, ::weights::stage2_unit4_bn2_mean, ::weights::stage2_unit4_bn2_scale, {2e-05}, //
- ::weights::stage2_unit4_bn2_var, ::weights::stage2_unit4_bn2_bias, ::weights::stage2_unit4_conv2_weight, {0}, ::weights::stage2_unit4_bn1_mean, ::weights::stage2_unit4_bn1_scale, {2e-05}, //
- ::weights::stage2_unit4_bn1_var, ::weights::stage2_unit4_bn1_bias, ::weights::stage2_unit4_conv1_weight, {0}, ::weights::stage2_unit3_bn3_mean, ::weights::stage2_unit3_bn3_scale, {2e-05}, //
- ::weights::stage2_unit3_bn3_var, ::weights::stage2_unit3_bn3_bias, ::weights::stage2_unit3_conv3_weight, {0}, ::weights::stage2_unit3_bn2_mean, ::weights::stage2_unit3_bn2_scale, {2e-05}, //
- ::weights::stage2_unit3_bn2_var, ::weights::stage2_unit3_bn2_bias, ::weights::stage2_unit3_conv2_weight, {0}, ::weights::stage2_unit3_bn1_mean, ::weights::stage2_unit3_bn1_scale, {2e-05}, //
- ::weights::stage2_unit3_bn1_var, ::weights::stage2_unit3_bn1_bias, ::weights::stage2_unit3_conv1_weight, {0}, ::weights::stage2_unit2_bn3_mean, ::weights::stage2_unit2_bn3_scale, {2e-05}, //
- ::weights::stage2_unit2_bn3_var, ::weights::stage2_unit2_bn3_bias, ::weights::stage2_unit2_conv3_weight, {0}, ::weights::stage2_unit2_bn2_mean, ::weights::stage2_unit2_bn2_scale, {2e-05}, //
- ::weights::stage2_unit2_bn2_var, ::weights::stage2_unit2_bn2_bias, ::weights::stage2_unit2_conv2_weight, {0}, ::weights::stage2_unit2_bn1_mean, ::weights::stage2_unit2_bn1_scale, {2e-05}, //
- ::weights::stage2_unit2_bn1_var, ::weights::stage2_unit2_bn1_bias, ::weights::stage2_unit2_conv1_weight, {0}, ::weights::stage2_unit1_sc_bn_mean, ::weights::stage2_unit1_sc_bn_scale, {2e-05}, //
- ::weights::stage2_unit1_sc_bn_var, ::weights::stage2_unit1_sc_bn_bias, ::weights::stage2_unit1_sc_weight, {0}, ::weights::stage1_unit3_bn3_mean, ::weights::stage1_unit3_bn3_scale, {2e-05}, //
- ::weights::stage1_unit3_bn3_var, ::weights::stage1_unit3_bn3_bias, ::weights::stage1_unit3_conv3_weight, {0}, ::weights::stage1_unit3_bn2_mean, ::weights::stage1_unit3_bn2_scale, {2e-05}, //
- ::weights::stage1_unit3_bn2_var, ::weights::stage1_unit3_bn2_bias, ::weights::stage1_unit3_conv2_weight, {0}, ::weights::stage1_unit3_bn1_mean, ::weights::stage1_unit3_bn1_scale, {2e-05}, //
- ::weights::stage1_unit3_bn1_var, ::weights::stage1_unit3_bn1_bias, ::weights::stage1_unit3_conv1_weight, {0}, ::weights::stage1_unit2_bn3_mean, ::weights::stage1_unit2_bn3_scale, {2e-05}, //
- ::weights::stage1_unit2_bn3_var, ::weights::stage1_unit2_bn3_bias, ::weights::stage1_unit2_conv3_weight, {0}, ::weights::stage1_unit2_bn2_mean, ::weights::stage1_unit2_bn2_scale, {2e-05}, //
- ::weights::stage1_unit2_bn2_var, ::weights::stage1_unit2_bn2_bias, ::weights::stage1_unit2_conv2_weight, {0}, ::weights::stage1_unit2_bn1_mean, ::weights::stage1_unit2_bn1_scale, {2e-05}, //
- ::weights::stage1_unit2_bn1_var, ::weights::stage1_unit2_bn1_bias, ::weights::stage1_unit2_conv1_weight, {0}, ::weights::stage1_unit1_sc_bn_mean, ::weights::stage1_unit1_sc_bn_scale, {2e-05}, //
- ::weights::stage1_unit1_sc_bn_var, ::weights::stage1_unit1_sc_bn_bias, ::weights::stage1_unit1_sc_weight, {0}, ::weights::bn0_mean, ::weights::bn0_scale, {2e-05}, //
- ::weights::bn0_var, ::weights::bn0_bias, ::weights::conv0_weight, ::weights::bn_data_mean, {2e-05}, //
- ::weights::bn_data_var, ::weights::bn_data_bias, ::weights::input_tensor, ::weights::stage1_unit1_bn3_mean, ::weights::stage1_unit1_bn3_scale, {2e-05}, //
- ::weights::stage1_unit1_bn3_var, ::weights::stage1_unit1_bn3_bias, ::weights::stage1_unit1_conv3_weight, {0}, ::weights::stage1_unit1_bn2_mean, ::weights::stage1_unit1_bn2_scale, {2e-05}, //
- ::weights::stage1_unit1_bn2_var, ::weights::stage1_unit1_bn2_bias, ::weights::stage1_unit1_conv2_weight, {0}, ::weights::stage1_unit1_bn1_mean, ::weights::stage1_unit1_bn1_scale, {2e-05}, //
- ::weights::stage1_unit1_bn1_var, ::weights::stage1_unit1_bn1_bias, ::weights::stage1_unit1_conv1_weight, ::weights::stage2_unit1_bn3_mean, ::weights::stage2_unit1_bn3_scale, {2e-05}, //
- ::weights::stage2_unit1_bn3_var, ::weights::stage2_unit1_bn3_bias, ::weights::stage2_unit1_conv3_weight, {0}, ::weights::stage2_unit1_bn2_mean, ::weights::stage2_unit1_bn2_scale, {2e-05}, //
- ::weights::stage2_unit1_bn2_var, ::weights::stage2_unit1_bn2_bias, ::weights::stage2_unit1_conv2_weight, {0}, ::weights::stage2_unit1_bn1_mean, ::weights::stage2_unit1_bn1_scale, {2e-05}, //
- ::weights::stage2_unit1_bn1_var, ::weights::stage2_unit1_bn1_bias, ::weights::stage2_unit1_conv1_weight, ::weights::stage3_unit1_bn3_mean, ::weights::stage3_unit1_bn3_scale, {2e-05}, //
- ::weights::stage3_unit1_bn3_var, ::weights::stage3_unit1_bn3_bias, ::weights::stage3_unit1_conv3_weight, {0}, ::weights::stage3_unit1_bn2_mean, ::weights::stage3_unit1_bn2_scale, {2e-05}, //
- ::weights::stage3_unit1_bn2_var, ::weights::stage3_unit1_bn2_bias, ::weights::stage3_unit1_conv2_weight, {0}, ::weights::stage3_unit1_bn1_mean, ::weights::stage3_unit1_bn1_scale, {2e-05}, //
- ::weights::stage3_unit1_bn1_var, ::weights::stage3_unit1_bn1_bias, ::weights::stage3_unit1_conv1_weight, ::weights::stage4_unit1_bn3_mean, ::weights::stage4_unit1_bn3_scale, {2e-05}, //
- ::weights::stage4_unit1_bn3_var , ::weights::stage4_unit1_bn3_bias, ::weights::stage4_unit1_conv3_weight, {0}, ::weights::stage4_unit1_bn2_mean, ::weights::stage4_unit1_bn2_scale, {2e-05}, //
- ::weights::stage4_unit1_bn2_var, ::weights::stage4_unit1_bn2_bias, ::weights::stage4_unit1_conv2_weight, {0}, ::weights::stage4_unit1_bn1_mean, ::weights::stage4_unit1_bn1_scale, {2e-05}, //
- ::weights::stage4_unit1_bn1_var, ::weights::stage4_unit1_bn1_bias, ::weights::stage4_unit1_conv1_weight};
-
- TestCaseVal ResNeXt50_Output = {                                //
-{5.50651348e-05, 1.02617312e-04, 2.46670097e-04, 3.91743088e-05, //
- 6.99452285e-05, 1.63910081e-04, 6.34302560e-05, 1.24250178e-03, //
- 9.12103351e-05, 6.57027354e-04, 7.50391409e-05, 4.87675388e-05, //
- 4.16809926e-05, 8.63198584e-05, 3.92582697e-05, 1.43127923e-04, //
- 1.56804934e-04, 8.89936418e-05, 3.52463212e-05, 1.00429017e-04, //
- 3.92404909e-05, 7.29392632e-05, 8.95423145e-05, 6.77058270e-05, //
- 1.49653715e-04, 3.62389692e-05, 6.39260033e-05, 2.33376471e-04, //
- 1.23167134e-04, 8.19247143e-05, 3.22844571e-05, 2.42171198e-04, //
- 8.00494527e-05, 1.76369736e-04, 2.99566163e-04, 1.48946137e-05, //
- 1.37829265e-04, 1.19199016e-04, 3.23461245e-05, 1.59191637e-04, //
- 2.21417940e-04, 1.31364184e-04, 6.55783515e-05, 2.38502427e-04, //
- 4.38263705e-05, 2.66033148e-05, 1.03360428e-04, 4.26316634e-04, //
- 1.68444836e-04, 7.81720679e-04, 1.18548247e-04, 1.04540959e-04, //
- 1.15592105e-04, 4.23703932e-05, 7.42222910e-05, 2.01620729e-04, //
- 3.75579948e-05, 1.16308707e-04, 9.45794163e-05, 1.67487175e-04, //
- 2.49268312e-04, 3.05931404e-04, 7.22366603e-05, 6.76214913e-05, //
- 8.11922291e-05, 2.79286287e-05, 1.20124852e-04, 6.88342727e-04, //
- 6.56307457e-05, 9.72160851e-05, 2.88040494e-04, 1.76985923e-04, //
- 4.79123737e-05, 1.19690550e-04, 1.18747332e-04, 4.09332861e-05, //
- 8.76334379e-05, 4.70570740e-05, 1.81484604e-04, 3.21576445e-05, //
- 4.44524339e-05, 1.07538224e-04, 4.35279617e-05, 6.82876926e-05, //
- 3.42438609e-04, 1.68470695e-04, 9.43551786e-05, 7.01807003e-05, //
- 6.77266507e-05, 5.24716343e-05, 1.41347227e-05, 4.33502610e-05, //
- 1.28405914e-03, 9.06537316e-05, 3.29739065e-04, 9.97233874e-05, //
- 9.99594777e-05, 2.88563733e-05, 1.01147656e-04, 2.16952350e-04, //
- 1.01970574e-04, 3.34532640e-04, 1.53291141e-04, 1.14909715e-04, //
- 9.42115366e-05, 1.24888349e-04, 8.98118014e-05, 4.10383334e-04, //
- 1.55923481e-04, 6.64273102e-05, 4.09763452e-05, 1.31662062e-04, //
- 3.21878062e-04, 1.59708958e-04, 8.29689889e-05, 4.65095727e-05, //
- 1.91711631e-04, 6.37966805e-05, 7.87222089e-05, 2.06328295e-05, //
- 8.93222314e-05, 2.62730871e-04, 4.61446434e-05, 7.48246093e-05, //
- 9.86962696e-05, 1.35667520e-04, 2.00343042e-04, 2.33085753e-04, //
- 1.32532878e-04, 1.12119509e-04, 2.62032354e-05, 8.17872497e-05, //
- 2.13730000e-05, 3.11197837e-05, 4.85567289e-05, 1.37340510e-04, //
- 2.71682529e-05, 5.06595825e-05, 1.39254218e-04, 8.51916338e-05, //
- 1.36571078e-04, 3.54321201e-05, 3.69027781e-04, 2.54284329e-04, //
- 3.41456216e-05, 8.41956280e-05, 7.53403729e-05, 1.01250633e-04, //
- 5.62501882e-05, 7.59732138e-05, 5.53068603e-05, 1.74174798e-04, //
- 1.01869438e-04, 5.89568335e-05, 2.00481518e-04, 2.94833790e-05, //
- 1.70780535e-04, 3.65029628e-05, 1.22360012e-04, 7.94315420e-05, //
- 1.45051992e-04, 1.30967892e-05, 2.19650843e-04, 5.02051516e-05, //
- 6.36913246e-05, 8.98543294e-05, 1.81516116e-05, 7.28391242e-05, //
- 6.82645114e-05, 4.59113144e-05, 4.65038320e-05, 9.97621974e-05, //
- 3.22279811e-04, 3.09213967e-04, 9.65814106e-05, 1.40965392e-04, //
- 6.96798888e-05, 1.19168333e-04, 1.33797686e-04, 1.08341410e-04, //
- 7.53334461e-05, 2.27722499e-04, 2.52729060e-05, 9.72651396e-05, //
- 7.31147229e-05, 7.23605335e-05, 7.50116233e-05, 6.99029551e-05, //
- 2.35148313e-04, 4.78852598e-05, 8.34442690e-05, 5.73854231e-05, //
- 2.20458183e-04, 1.62025099e-04, 4.92939253e-05, 1.33813315e-04, //
- 9.10512026e-05, 3.03952420e-05, 9.07273788e-05, 9.64296487e-05, //
- 7.38863018e-05, 7.34672794e-05, 1.17346754e-04, 1.47409373e-04, //
- 1.82924676e-04, 1.15614486e-04, 3.88978733e-05, 3.83411025e-05, //
- 3.92934977e-04, 5.04204691e-05, 1.01534919e-04, 3.40186634e-05, //
- 2.17473098e-05, 1.12378140e-04, 3.47267924e-05, 4.63854813e-05, //
- 7.66294252e-04, 9.94596849e-05, 1.75847334e-03, 4.58103925e-04, //
- 8.08934346e-05, 4.00575867e-04, 1.51941215e-03, 1.98546471e-03, //
- 2.07055084e-04, 1.41256140e-03, 8.49361008e-04, 3.51254886e-04, //
- 9.09373164e-04, 7.60942348e-05, 5.19888999e-05, 2.69552198e-04, //
- 5.37973247e-04, 2.15650303e-03, 1.70945841e-05, 5.04216223e-05, //
- 1.54493857e-04, 1.33685307e-05, 5.77397223e-05, 2.57650299e-05, //
- 8.03465882e-05, 5.13939922e-05, 1.53278510e-04, 1.49028827e-04, //
- 1.67119637e-04, 5.45622024e-05, 1.15603791e-04, 9.16508943e-05, //
- 8.19005800e-06, 2.79107899e-05, 1.38869480e-04, 2.00008290e-05, //
- 2.94471556e-05, 8.27159747e-05, 2.42930364e-05, 3.79639532e-05, //
- 2.65428498e-05, 1.18604788e-04, 1.65083344e-04, 5.49912438e-05, //
- 6.24617751e-05, 1.26309051e-05, 1.32558844e-05, 9.64647370e-06, //
- 7.61347837e-05, 1.96937672e-05, 3.53599666e-04, 7.72335989e-05, //
- 2.56922285e-05, 3.55304714e-04, 2.53106773e-05, 1.71899264e-05, //
- 3.25414840e-05, 7.15067581e-05, 3.17686608e-05, 2.80359054e-05, //
- 5.18567867e-05, 3.78256154e-05, 4.43574463e-05, 4.45734404e-05, //
- 2.86199629e-05, 4.04950915e-05, 2.00760667e-04, 2.65494564e-05, //
- 6.24432505e-05, 1.99369370e-05, 6.42208324e-05, 3.22917549e-05, //
- 7.27730949e-05, 2.36593332e-05, 6.53546231e-05, 5.70644217e-04, //
- 8.08442655e-06, 4.50222578e-05, 3.17059166e-05, 2.84890593e-05, //
- 1.08413806e-04, 2.49261393e-05, 2.49472341e-05, 2.01168601e-04, //
- 7.00183737e-05, 1.60827316e-04, 1.52782944e-04, 7.06171757e-03, //
- 3.28888738e-04, 7.02612306e-05, 9.12767791e-05, 3.51598894e-04, //
- 5.26121410e-04, 1.10219997e-04, 4.32022032e-04, 6.64730382e-04, //
- 1.54186753e-04, 1.39889005e-03, 3.39535145e-05, 3.33688258e-05, //
- 2.14250409e-04, 2.97154719e-03, 3.75806727e-03, 1.94884778e-03, //
- 2.46832118e-04, 1.37656723e-04, 1.30461424e-03, 3.14504177e-05, //
- 1.42637859e-04, 1.28144305e-03, 3.69892252e-04, 1.25091115e-04, //
- 1.28285290e-04, 6.53934912e-05, 1.00054036e-04, 2.78346735e-04, //
- 2.07128352e-04, 1.05401594e-03, 5.84872905e-04, 5.38997760e-04, //
- 7.54083041e-04, 1.58093194e-03, 2.16555665e-04, 1.87245736e-04, //
- 2.09846505e-04, 9.27958288e-04, 1.46167341e-03, 4.05575323e-04, //
- 1.78994494e-03, 1.87182438e-03, 2.48552207e-03, 2.26513221e-04, //
- 2.33262219e-03, 3.40378913e-03, 8.24162562e-04, 8.39091139e-04, //
- 1.70037453e-03, 1.58856716e-03, 2.16830405e-03, 7.26378581e-04, //
- 1.62251946e-03, 5.83136920e-04, 1.04289029e-04, 5.46432020e-05, //
- 1.65146717e-04, 2.27209227e-03, 1.74194894e-04, 4.16665061e-05, //
- 1.00549485e-04, 1.34166388e-04, 5.78325009e-04, 2.26678749e-04, //
- 2.83952500e-03, 1.50784114e-02, 2.47245072e-03, 8.07863107e-05, //
- 3.47876339e-04, 2.83706850e-05, 5.42661001e-04, 1.76058186e-03, //
- 1.01403112e-03, 2.78839655e-03, 9.56183474e-04, 3.99633951e-04, //
- 4.57454298e-05, 5.88979106e-04, 1.06490166e-04, 6.08642986e-05, //
- 6.90478191e-05, 2.19152033e-04, 1.48267995e-04, 7.96065287e-05, //
- 1.45985672e-04, 5.60633343e-05, 1.08226886e-04, 2.10906132e-04, //
- 8.98581056e-05, 1.24069658e-04, 5.60897497e-05, 1.21006182e-04, //
- 3.68356734e-04, 1.00525806e-03, 2.07061006e-04, 2.75948289e-04, //
- 3.27963207e-04, 8.20670757e-05, 4.32355300e-05, 4.11306028e-05, //
- 1.76734084e-05, 4.47577513e-05, 5.32666672e-05, 5.05499593e-05, //
- 1.50118707e-04, 1.93006956e-04, 9.86038867e-05, 3.82765247e-05, //
- 2.32784529e-04, 1.48555948e-04, 6.35119097e-04, 6.05335044e-05, //
- 2.74616061e-04, 1.59379470e-05, 4.66534402e-05, 5.09824422e-05, //
- 1.60490861e-04, 5.32801823e-05, 3.21617059e-04, 1.55422225e-04, //
- 1.82472009e-04, 3.71814822e-04, 4.68673788e-05, 4.72050197e-05, //
- 2.40707250e-05, 4.73954278e-05, 4.90685088e-05, 2.20751044e-05, //
- 2.32684852e-05, 3.84951491e-05, 6.09538110e-05, 4.82611504e-05, //
- 5.92963697e-05, 1.81555060e-05, 1.56208815e-04, 2.03650387e-04, //
- 8.16868487e-05, 1.86768040e-04, 1.87426078e-04, 5.70774253e-04, //
- 1.32845948e-03, 1.41835568e-04, 1.24300728e-04, 2.36096130e-05, //
- 4.11070359e-05, 7.87690340e-04, 2.09520163e-04, 8.11905658e-04, //
- 1.12025555e-04, 1.45197511e-04, 2.01492905e-04, 7.92027931e-05, //
- 1.58670329e-04, 1.20059238e-04, 8.06942175e-04, 2.98377199e-05, //
- 6.40970829e-05, 1.57061531e-05, 5.60405897e-04, 4.93233165e-05, //
- 2.78816442e-04, 7.52787091e-05, 5.64849433e-05, 1.31082226e-04, //
- 1.23113525e-04, 8.99840379e-05, 1.36112867e-04, 2.03118936e-04, //
- 2.10770304e-05, 1.61439850e-04, 4.27498526e-05, 7.77094756e-05, //
- 2.93797784e-04, 4.55639383e-04, 4.87608428e-04, 4.10539535e-04, //
- 4.60162773e-05, 2.24805462e-05, 2.42742790e-05, 7.52446661e-03, //
- 2.10448867e-03, 8.20602290e-05, 7.62794371e-05, 5.00283146e-04, //
- 3.44632339e-04, 2.53988139e-04, 2.32561957e-04, 2.95337231e-05, //
- 9.54450588e-05, 1.32254470e-04, 2.86223512e-04, 1.19820630e-04, //
- 2.04534721e-04, 3.16248508e-04, 4.90473649e-05, 2.02537584e-03, //
- 1.91606727e-04, 9.19290469e-04, 1.15205161e-03, 2.05204403e-03, //
- 1.71233594e-04, 2.97986495e-04, 3.93450209e-05, 4.94629284e-03, //
- 1.29229128e-02, 9.73040645e-04, 9.60797770e-04, 4.12984198e-04, //
- 4.05546132e-04, 6.77712029e-04, 5.86606504e-04, 1.06241938e-03, //
- 1.26756507e-03, 2.62556277e-04, 4.77376441e-03, 6.96427189e-04, //
- 1.77508744e-04, 5.48640080e-03, 4.43028919e-02, 4.17495437e-04, //
- 5.41685103e-03, 6.43935055e-05, 2.58475979e-04, 5.44616021e-03, //
- 2.33245082e-03, 6.22467196e-04, 6.43143570e-03, 3.57492565e-04, //
- 3.15670564e-04, 1.53740763e-03, 8.18114728e-04, 1.01060933e-03, //
- 2.49605044e-04, 2.42744762e-04, 1.29550943e-04, 2.86779541e-04, //
- 2.37691667e-04, 2.50628538e-04, 1.13072549e-03, 2.98989326e-04, //
- 5.43168164e-04, 2.11205948e-02, 1.70355575e-04, 6.11648138e-04, //
- 6.47807843e-04, 4.77366615e-04, 7.24872007e-05, 8.93447199e-04, //
- 2.00939388e-03, 1.26048772e-05, 1.33022222e-05, 6.62002712e-05, //
- 1.24316124e-04, 2.49749311e-04, 1.63337012e-04, 4.74887871e-04, //
- 2.04025279e-03, 2.22008978e-03, 3.24379507e-04, 9.50702743e-05, //
- 1.55890040e-04, 9.69421380e-05, 2.83406680e-05, 3.15151519e-05, //
- 4.19822500e-05, 2.44904484e-04, 7.99890142e-04, 2.23370109e-04, //
- 2.05508812e-04, 7.18913507e-04, 6.81551034e-03, 3.71976552e-04, //
- 7.37025766e-05, 2.86007556e-03, 4.94066444e-05, 1.03671546e-03, //
- 7.31813139e-04, 1.47625036e-03, 1.54796941e-03, 1.84437726e-03, //
- 3.43662687e-03, 7.02592544e-03, 1.23484642e-03, 8.28685661e-05, //
- 9.01092426e-04, 6.34198834e-04, 1.52501352e-02, 1.20926015e-02, //
- 4.10964973e-02, 3.94913880e-03, 6.23491185e-04, 7.27712541e-05, //
- 3.58212652e-04, 1.57161849e-04, 2.03033048e-03, 4.09483968e-04, //
- 2.13245148e-04, 1.14261216e-04, 8.34409322e-04, 6.34408716e-05, //
- 9.97561682e-03, 8.07190008e-05, 4.75242821e-04, 1.38821619e-04, //
- 4.34300455e-04, 1.59171619e-03, 6.25098648e-04, 1.59187324e-03, //
- 4.90568345e-05, 4.18156233e-05, 5.76968378e-05, 5.60885492e-05, //
- 6.14894961e-05, 3.27414891e-05, 5.30396501e-05, 9.14774646e-05, //
- 1.11003181e-04, 7.40332529e-04, 2.06959230e-04, 5.07793273e-04, //
- 2.57424836e-04, 7.66463054e-05, 4.88075311e-04, 8.80996755e-04, //
- 8.78752558e-04, 2.25926400e-04, 2.02957250e-04, 3.83907522e-04, //
- 5.89826494e-04, 7.01884623e-04, 1.65878492e-03, 1.24878832e-04, //
- 6.30789844e-04, 1.56037218e-03, 3.58333782e-04, 2.87904695e-04, //
- 5.17134176e-05, 5.96352183e-05, 6.38906204e-05, 2.81296292e-04, //
- 7.47291924e-05, 9.93925496e-04, 1.76499889e-03, 1.59316492e-04, //
- 5.71295204e-05, 6.77147706e-04, 1.13314964e-01, 1.32879848e-03, //
- 5.96576894e-04, 6.18986378e-04, 2.06136261e-04, 1.20169258e-04, //
- 2.07031786e-04, 4.99625130e-05, 5.42980211e-04, 9.56030708e-05, //
- 1.84259797e-03, 1.57670846e-04, 3.57496989e-04, 5.66852570e-04, //
- 3.26671034e-05, 7.59384129e-05, 2.12945812e-03, 1.97209092e-03, //
- 3.42535292e-04, 1.31485125e-04, 7.10419670e-04, 1.79181239e-04, //
- 6.10288756e-04, 2.50733632e-04, 2.61914945e-04, 9.33641160e-04, //
- 2.01532766e-05, 3.76174517e-04, 1.05448944e-05, 5.92079596e-05, //
- 5.51982084e-04, 5.67563620e-05, 1.27923471e-04, 4.08192427e-05, //
- 2.43202856e-04, 8.68358620e-05, 2.40196350e-05, 2.08529818e-05, //
- 1.47632716e-04, 2.45956704e-04, 2.06049983e-04, 6.51782248e-05, //
- 3.40541737e-04, 6.49441135e-05, 2.80586677e-03, 8.12003214e-04, //
- 9.08019047e-06, 4.00714169e-04, 4.33226785e-04, 1.81725336e-04, //
- 2.35561994e-04, 3.77048709e-04, 4.72070024e-05, 1.36533317e-05, //
- 5.11362414e-05, 4.84773336e-05, 3.37208512e-05, 8.56403130e-06, //
- 2.32690854e-05, 1.42548175e-04, 1.04763221e-05, 4.66438127e-04, //
- 1.04869236e-04, 5.47190793e-05, 4.53753273e-05, 2.27020464e-05, //
- 1.11239613e-04, 1.00066641e-03, 2.81959256e-05, 2.21273949e-05, //
- 4.50442021e-05, 5.12982078e-04, 2.27454530e-05, 3.62212413e-05, //
- 5.48365970e-05, 7.08978449e-04, 1.08527187e-04, 2.51991791e-04, //
- 2.23578754e-04, 1.15499878e-03, 1.00881625e-04, 6.94529619e-04, //
- 9.32984753e-04, 4.40575677e-05, 3.77983000e-04, 7.28300583e-05, //
- 1.70398387e-04, 1.78163900e-04, 2.78442149e-05, 3.57371726e-04, //
- 1.15301664e-04, 3.45061359e-04, 1.24860715e-04, 5.64006514e-05, //
- 1.53906745e-04, 1.50790365e-04, 1.86125428e-04, 8.34881735e-04, //
- 1.40911166e-03, 1.30345070e-04, 1.74031928e-04, 1.89815342e-04, //
- 8.14285420e-04, 6.76126510e-05, 1.94237669e-04, 1.24635815e-04, //
- 3.37034115e-04, 1.23645610e-03, 7.44269200e-05, 3.91700509e-04, //
- 1.91001466e-03, 1.97574758e-04, 2.91971919e-05, 5.41322806e-04, //
- 2.73686339e-04, 1.84961900e-05, 2.92357407e-03, 6.56473348e-05, //
- 2.04388969e-04, 2.91154283e-04, 6.43363237e-05, 8.27608048e-04, //
- 6.12238131e-04, 3.76588898e-04, 2.87955627e-05, 3.23486025e-03, //
- 7.07281288e-04, 9.10406161e-05, 2.33193132e-04, 2.22620583e-04, //
- 2.09894893e-03, 1.26557861e-04, 2.97272345e-04, 9.69925386e-05, //
- 8.22860748e-05, 6.70238165e-04, 1.01737351e-04, 8.48724216e-04, //
- 3.02929751e-04, 5.87718860e-05, 1.32703746e-04, 2.98623950e-03, //
- 8.05277377e-05, 1.37390301e-03, 1.12459944e-04, 8.81121145e-04, //
- 2.16899836e-03, 5.34153124e-03, 2.45119864e-03, 1.65222096e-04, //
- 2.15228793e-04, 3.33108357e-04, 1.08212946e-04, 2.44365330e-03, //
- 1.15675801e-04, 7.19235468e-05, 1.82422344e-03, 4.61491960e-04, //
- 8.80191801e-04, 1.37190495e-04, 8.22364236e-04, 5.77352330e-05, //
- 9.16919817e-05, 1.86401661e-02, 2.30479112e-04, 7.78569811e-05, //
- 8.73598270e-04, 2.53834267e-04, 4.91340004e-04, 3.25640722e-04, //
- 2.15775595e-04, 1.00230864e-04, 4.42220335e-04, 1.10167242e-03, //
- 3.04726505e-04, 7.59828836e-05, 1.35231239e-03, 2.01572941e-04, //
- 1.11120215e-04, 9.22142863e-05, 9.27345187e-04, 3.12938821e-03, //
- 4.61115415e-04, 1.43291472e-04, 2.40639318e-03, 1.02862359e-04, //
- 1.97239176e-04, 1.47885934e-04, 1.91495012e-04, 2.38463064e-04, //
- 4.64516971e-03, 1.01100974e-04, 4.00936638e-04, 5.40192887e-05, //
- 4.04003185e-05, 1.48531375e-03, 5.24300158e-05, 1.55200338e-04, //
- 1.50174776e-03, 5.15846128e-04, 4.23058955e-04, 2.42272599e-05, //
- 2.78038867e-02, 7.18823692e-04, 1.17162090e-04, 4.72995394e-04, //
- 2.88907671e-04, 2.25821612e-04, 2.79603829e-03, 1.37790310e-04, //
- 3.34549043e-03, 2.96251592e-03, 6.33845106e-04, 1.30221000e-04, //
- 1.29934328e-04, 1.03611790e-04, 5.01796277e-03, 1.84821722e-04, //
- 1.10045646e-03, 1.10013958e-03, 1.71047112e-04, 4.76097950e-04, //
- 1.16152914e-04, 1.60165795e-03, 2.89000105e-04, 1.83430588e-04, //
- 1.24591310e-03, 1.38745454e-04, 1.19520421e-03, 8.02618088e-05, //
- 4.39188996e-04, 1.97306690e-05, 6.39256416e-03, 3.47314635e-04, //
- 9.82591882e-05, 1.77403563e-04, 1.02508398e-04, 3.61695020e-05, //
- 2.29998911e-03, 5.75470389e-04, 5.71390519e-05, 3.32290540e-04, //
- 1.07335662e-04, 4.76319779e-04, 1.84238015e-03, 1.58976298e-03, //
- 1.35935217e-04, 2.38239969e-04, 5.37582964e-04, 7.46710284e-05, //
- 9.47919581e-03, 6.56067510e-04, 9.26583260e-02, 4.57655825e-03, //
- 3.06270056e-04, 8.28241638e-04, 5.00521390e-03, 3.48211091e-04, //
- 7.33081979e-05, 2.26662974e-04, 4.92043793e-04, 7.62404583e-04, //
- 3.17437953e-05, 7.69545499e-04, 7.93307030e-04, 1.09652217e-04, //
- 9.90325861e-05, 1.39600408e-04, 1.62005180e-03, 6.28282942e-05, //
- 4.50995460e-04, 2.53953651e-04, 6.23940257e-04, 2.44366843e-03, //
- 2.95464997e-04, 7.94046136e-05, 6.73338363e-05, 1.47384498e-03, //
- 3.12933029e-04, 8.69485229e-05, 1.00936915e-03, 5.06406010e-04, //
- 2.58427812e-03, 1.22012768e-03, 6.07763417e-04, 7.06228166e-05, //
- 8.88726616e-04, 3.26876558e-04, 1.02180355e-04, 4.65980382e-04, //
- 7.85218508e-05, 2.09805978e-04, 5.34053506e-05, 1.73884863e-03, //
- 5.11434591e-05, 9.97981624e-05, 4.90399776e-04, 1.38578500e-04, //
- 2.91935459e-04, 3.74878946e-05, 2.51602643e-04, 1.59118127e-03, //
- 1.61901218e-04, 5.57693456e-05, 5.08740370e-04, 3.36556659e-05, //
- 8.48493946e-05, 2.08716909e-03, 4.55337926e-04, 3.14865191e-03, //
- 3.82046128e-04, 6.15931713e-05, 1.45739745e-04, 3.60452977e-04, //
- 1.24838704e-03, 1.67804785e-04, 1.95581582e-03, 2.47975142e-04, //
- 2.73212860e-03, 9.36546177e-03, 9.15271696e-04, 2.49455101e-04, //
- 4.79117793e-04, 5.38238783e-05, 1.10092515e-04, 9.67487795e-05, //
- 1.92187308e-05, 3.47932393e-04, 2.37666187e-04, 1.36006158e-03, //
- 4.79851224e-05, 2.94038706e-04, 7.03297381e-04, 6.57579079e-02, //
- 4.80025410e-05, 5.72817284e-04, 1.39874988e-03, 2.17847060e-03, //
- 3.13172022e-05, 8.91306045e-05, 6.42098195e-04, 2.54075043e-03, //
- 4.12981608e-05, 3.83167586e-04, 4.96551802e-04, 1.38449378e-03, //
- 2.27733632e-03, 3.56824778e-04, 1.36296294e-04, 1.73579916e-04}};
-
-  TestCasePairs testcase_pairs = {{ResNeXt50_WeightsInputs, ResNeXt50_Output}};
-
   ResNeXTTestSpec spec = GetParam();
 
   HloModuleConfig cfg;
+
+  //std::unique_ptr<HloModule> hlo_module = absl::make_unique<HloModule>("module", cfg);
 
   std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
       "module", cfg, false, false, nullptr);
@@ -3374,13 +3032,17 @@ ENTRY %cluster_0__XlaCompiledKernel_true__XlaNumConstantArgs_70__XlaNumResourceA
 
   hlo_module->ParseHloStringAndVerifyModule(hlo_text); 
 
-  CompileAndCheck(std::move(hlo_module), spec.filecheck_lines, testcase_pairs);
+  CompileAndCheck(std::move(hlo_module), spec.filecheck_lines);
 }
 
 std::vector<ResNeXTTestSpec> GetResNeXTTestCases() {
   std::vector<ResNeXTTestSpec> result;
   result.push_back(
-      {F32, R"(CHECK: func @hlo_module)"});
+      {F32, R"(
+CHECK: func @hlo_module
+)"});
+  //result.push_back(
+  //    {F64, R"(CHECK: func @hlo_module(%arg0: tensor<1x3xf32>, %arg1: tensor<1x3xf32>) -> tensor<1x3xf32>)"});
   return result;
 }
 

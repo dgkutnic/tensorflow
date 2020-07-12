@@ -152,8 +152,8 @@ tf_cc_test(
 )
 
 tf_cc_test(
-    name = "resnext_test_old",
-    srcs = ["resnext_test_old.cc"],
+    name = "plaidml_resnext_test_semantics",
+    srcs = ["plaidml_resnext_test_semantics.cc"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
