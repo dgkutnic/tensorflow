@@ -433,7 +433,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           // Operand 1: gamma
           // Operand 2: beta
           // Epsilon and Feature Index operands must be accessed by calling the epsilon() and feature_index() functions
-          Value findex = Value{instruction->feature_index()};
+          int64_t feature_index = instruction->feature_index();
+          Value findex = Value{feature_index};
           float e = instruction->epsilon();
           auto batch_mean = plaidml_op::mean(instr_map[operand_ids[0]], findex);
           auto batch_variance = plaidml_op::variance(instr_map[operand_ids[0]], findex);
@@ -664,7 +665,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         case HloOpcode::kGetDimensionSize: {
           auto dim_operand = instruction->dimension();
           VLOG(2) << "Getting dimension size at axis " << dim_operand;
-          auto operand_shape = instruction->operand(0)->shape().dimensions(dim_operand);
+          int64_t operand_shape = instruction->operand(0)->shape().dimensions(dim_operand);
           VLOG(2) << "DImension size at axis " << dim_operand << " is " << operand_shape;
           auto op = Tensor{operand_shape};
           instr_map.insert(std::make_pair(cur_instr_id, op));
