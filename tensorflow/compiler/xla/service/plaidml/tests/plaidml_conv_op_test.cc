@@ -154,10 +154,15 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
 
 std::vector<ConvTestSpec> GetConvTestCases() {
   std::vector<ConvTestSpec> result;
+  auto check_str = R"#(
+          CHECK: func @hlo_module(%arg0: tensor<[[fss:.*]]x[[ic:.*]]x[[oc:.*]]x[[prec:.*]]>, %arg1: tensor<[[b:.*]]x[[iss:.*]]x[[ic]]x[[prec]]>) -> tensor<[[b]]x[[oss:.*]]x[[oc]]x[[prec]]>
+          CHECK: %convolution = tile.contract add, mul, %{{.*}}, %{{.*}}, %{{.*}} {idxs = ["n", "x0", "x1", "co", "k0", "k1", "ci"], sink = #{{.*}}, srcs = [#{{.*}}, #{{.*}}]} : tensor<[[prec]]>, tensor<[[b]]x[[iss]]x[[ic]]x[[prec]]>, tensor<[[fss]]x[[ic]]x[[oc]]x[[prec]]> -> tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
+          CHECK: return %convolution : tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
+        )#";
   result.push_back(
-      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x1xf32>, %arg1: tensor<1x5x5x1xf32>) -> tensor<1x3x3x1xf32>)"});
+      {F32, check_str});
   result.push_back(
-      {F64, R"(CHECK: func @hlo_module(%arg0: tensor<3x3x1x1xf32>, %arg1: tensor<1x5x5x1xf32>) -> tensor<1x3x3x1xf32>)"});
+      {F64, check_str});
   return result;
 }
 
