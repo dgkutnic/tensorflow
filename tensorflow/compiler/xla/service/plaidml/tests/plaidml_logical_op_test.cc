@@ -27,18 +27,18 @@ namespace {
 using TestCaseVal = std::vector<std::vector<int>>;
 using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
 
-struct EltwiseTestSpec {
+struct LogicalTestSpec {
   PrimitiveType primitive_type;
   string filecheck_lines;
 };
 
-string EltwiseTestSpecToString(const ::testing::TestParamInfo<EltwiseTestSpec>& info) {
+string LogicalTestSpecToString(const ::testing::TestParamInfo<LogicalTestSpec>& info) {
   return PrimitiveType_Name(info.param.primitive_type);
 }
 
-class PlaidMLEltwiseOperationTest
+class PlaidMLLogicalOperationTest
     : public PlaidMLCodegenTest,
-      public ::testing::WithParamInterface<EltwiseTestSpec> {
+      public ::testing::WithParamInterface<LogicalTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloComputation> entry_computation,
                          const string& filecheck_lines,
@@ -86,7 +86,7 @@ class PlaidMLEltwiseOperationTest
   }
 };
 
-TEST_P(PlaidMLEltwiseOperationTest, EltwiseAndOp) {
+TEST_P(PlaidMLLogicalOperationTest, LogicalAndOp) {
   std::vector<int> input_A = {0, 0, 1, 1, 0, 0, 1, 1, 0};
   std::vector<int> input_B = {1, 0, 1, 0, 1, 0, 1, 0, 1};
   std::vector<int> output_C = {0, 0, 1, 0, 0, 0, 1, 0, 0};
@@ -95,8 +95,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseAndOp) {
   TestCaseVal results = {output_C};
   TestCasePairs testcase_pairs = {{inputs, results}};
 
-  HloComputation::Builder builder("EltwiseAndOp");
-  EltwiseTestSpec spec = GetParam();
+  HloComputation::Builder builder("LogicalAndOp");
+  LogicalTestSpec spec = GetParam();
 
   auto fcheck_lines = spec.filecheck_lines;
   fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xsi32>, %arg1: tensor<3x3xsi32>) -> tensor<3x3xsi32>\n");
@@ -112,7 +112,7 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseAndOp) {
   CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
 }
 
-TEST_P(PlaidMLEltwiseOperationTest, EltwiseNotOp) {
+TEST_P(PlaidMLLogicalOperationTest, LogicalNotOp) {
   std::vector<int> input_A = {0, 0, 1, 1, 0, 0, 1, 1, 0};
   std::vector<int> output_C = {1, 1, 0, 0, 1, 1, 1, 1, 0};
 
@@ -120,8 +120,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseNotOp) {
   TestCaseVal results = {output_C};
   TestCasePairs testcase_pairs = {{inputs, results}};
 
-  HloComputation::Builder builder("EltwiseNotOp");
-  EltwiseTestSpec spec = GetParam();
+  HloComputation::Builder builder("LogicalNotOp");
+  LogicalTestSpec spec = GetParam();
 
   auto fcheck_lines = spec.filecheck_lines;
   fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xsi32>) -> tensor<3x3xsi32>\n");
@@ -135,7 +135,7 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseNotOp) {
   CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
 }
 
-TEST_P(PlaidMLEltwiseOperationTest, EltwiseOrOp) {
+TEST_P(PlaidMLLogicalOperationTest, LogicalOrOp) {
   std::vector<int> input_A = {0, 0, 1, 1, 0, 0, 1, 1, 0};
   std::vector<int> input_B = {1, 0, 1, 0, 1, 0, 1, 0, 1};
   std::vector<int> output_C = {1, 0, 1, 1, 1, 0, 1, 1, 1};
@@ -144,8 +144,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseOrOp) {
   TestCaseVal results = {output_C};
   TestCasePairs testcase_pairs = {{inputs, results}};
 
-  HloComputation::Builder builder("EltwiseOrOp");
-  EltwiseTestSpec spec = GetParam();
+  HloComputation::Builder builder("LogicalOrOp");
+  LogicalTestSpec spec = GetParam();
 
   auto fcheck_lines = spec.filecheck_lines;
   fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xsi32>, %arg1: tensor<3x3xsi32>) -> tensor<3x3xsi32>\n");
@@ -161,7 +161,7 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseOrOp) {
   CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
 }
 
-TEST_P(PlaidMLEltwiseOperationTest, EltwiseXorOp) {
+TEST_P(PlaidMLLogicalOperationTest, LogicalXorOp) {
   std::vector<int> input_A = {0, 0, 1, 1, 0, 0, 1, 1, 0};
   std::vector<int> input_B = {1, 0, 1, 0, 1, 0, 1, 0, 1};
   std::vector<int> output_C = {1, 0, 0, 1, 1, 0, 0, 1, 1};
@@ -170,8 +170,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseXorOp) {
   TestCaseVal results = {output_C};
   TestCasePairs testcase_pairs = {{inputs, results}};
 
-  HloComputation::Builder builder("EltwiseXorOp");
-  EltwiseTestSpec spec = GetParam();
+  HloComputation::Builder builder("LogicalXorOp");
+  LogicalTestSpec spec = GetParam();
 
   auto fcheck_lines = spec.filecheck_lines;
   fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xsi32>, %arg1: tensor<3x3xsi32>) -> tensor<3x3xsi32>\n");
@@ -187,8 +187,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseXorOp) {
   CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
 }
 
-std::vector<EltwiseTestSpec> GetEltwiseTestCases() {
-  std::vector<EltwiseTestSpec> result;
+std::vector<LogicalTestSpec> GetLogicalTestCases() {
+  std::vector<LogicalTestSpec> result;
   result.push_back(
       {S32, R"#(
         CHECK: return %{{.*}} : tensor<3x3xsi32>
@@ -201,10 +201,10 @@ std::vector<EltwiseTestSpec> GetEltwiseTestCases() {
 
 /**/
 // TODO: INSTANTIATE_TEST_CASE_P was deprecated in favor for INSTANTIATE_TEST_SUITE_P, but the version of gtest that bazel links in is looking for INSTANTIATE_TEST_CASE_P right now.
-INSTANTIATE_TEST_CASE_P(EltwiseAndOp,
-                         PlaidMLEltwiseOperationTest,
-                         ::testing::ValuesIn(GetEltwiseTestCases()),
-                         EltwiseTestSpecToString);
+INSTANTIATE_TEST_CASE_P(LogicalAndOp,
+                         PlaidMLLogicalOperationTest,
+                         ::testing::ValuesIn(GetLogicalTestCases()),
+                         LogicalTestSpecToString);
 /**/
 }  // namespace
 }  // namespace plaidml

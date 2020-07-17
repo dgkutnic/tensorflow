@@ -28,18 +28,18 @@ using TestCaseVal = std::vector<std::vector<float>>;
 using TestCaseVal_int = std::vector<std::vector<int8_t>>;
 using TestCasePairs = std::map<TestCaseVal, TestCaseVal_int>;
 
-struct EltwiseTestSpec {
+struct CompareTestSpec {
   PrimitiveType primitive_type;
   string filecheck_lines;
 };
 
-string EltwiseTestSpecToString(const ::testing::TestParamInfo<EltwiseTestSpec>& info) {
+string CompareTestSpecToString(const ::testing::TestParamInfo<CompareTestSpec>& info) {
   return PrimitiveType_Name(info.param.primitive_type);
 }
 
-class PlaidMLEltwiseOperationTest
+class PlaidMLCompareOperationTest
     : public PlaidMLCodegenTest,
-      public ::testing::WithParamInterface<EltwiseTestSpec> {
+      public ::testing::WithParamInterface<CompareTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloComputation> entry_computation,
                          const string& filecheck_lines,
@@ -87,7 +87,7 @@ class PlaidMLEltwiseOperationTest
   }
 };
 
-TEST_P(PlaidMLEltwiseOperationTest, EltwiseCompOp) {
+TEST_P(PlaidMLCompareOperationTest, CompOp) {
   std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
   std::vector<int8_t> expected_val = {1, 1, 1, 1, 0, 0, 0, 0, 0};
@@ -99,8 +99,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseCompOp) {
   TestCaseVal_int results = {expected_val};
   TestCasePairs testcase_pairs = {{inputs, results}};
 
-  HloComputation::Builder builder("EltwiseCompOp");
-  EltwiseTestSpec spec = GetParam();
+  HloComputation::Builder builder("CompOp");
+  CompareTestSpec spec = GetParam();
 
   auto fcheck_lines = spec.filecheck_lines;
   fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xi1>\n");
@@ -116,8 +116,8 @@ TEST_P(PlaidMLEltwiseOperationTest, EltwiseCompOp) {
   CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
 }
 
-std::vector<EltwiseTestSpec> GetEltwiseTestCases() {
-  std::vector<EltwiseTestSpec> result;
+std::vector<CompareTestSpec> GetCompareTestCases() {
+  std::vector<CompareTestSpec> result;
 // TODO: reenable F16 when it is ready
 //  result.push_back(
 //      {F16, R"(CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xf32>)"});
@@ -134,9 +134,9 @@ std::vector<EltwiseTestSpec> GetEltwiseTestCases() {
 /**/
 // TODO: INSTANTIATE_TEST_CASE_P was deprecated in favor for INSTANTIATE_TEST_SUITE_P, but the version of gtest that bazel links in is looking for INSTANTIATE_TEST_CASE_P right now.
 INSTANTIATE_TEST_CASE_P(All,
-                         PlaidMLEltwiseOperationTest,
-                         ::testing::ValuesIn(GetEltwiseTestCases()),
-                         EltwiseTestSpecToString);
+                         PlaidMLCompareOperationTest,
+                         ::testing::ValuesIn(GetCompareTestCases()),
+                         CompareTestSpecToString);
 /**/
 }  // namespace
 }  // namespace plaidml
