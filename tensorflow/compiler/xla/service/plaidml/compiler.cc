@@ -356,18 +356,33 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           Tensor op;
           auto direction = instruction->comparison_direction();
           switch (direction) {
-            case ComparisonDirection::kEq:
+            case ComparisonDirection::kEq: {
               op = instr_map[operand_ids[0]] == instr_map[operand_ids[1]];
-            case ComparisonDirection::kNe:
+              break;
+            }
+            case ComparisonDirection::kNe: {
               op = instr_map[operand_ids[0]] != instr_map[operand_ids[1]];
-            case ComparisonDirection::kGe:
+              break;
+            }
+            case ComparisonDirection::kGe: {
               op = instr_map[operand_ids[0]] >= instr_map[operand_ids[1]];
-            case ComparisonDirection::kGt:
+              break;
+            }
+            case ComparisonDirection::kGt: {
               op = instr_map[operand_ids[0]] > instr_map[operand_ids[1]];
-            case ComparisonDirection::kLe:
+              break;
+            }
+            case ComparisonDirection::kLe: {
               op = instr_map[operand_ids[0]] <= instr_map[operand_ids[1]];
-            case ComparisonDirection::kLt:
+              break;
+            }
+            case ComparisonDirection::kLt: {
               op = instr_map[operand_ids[0]] < instr_map[operand_ids[1]];
+              break;
+            }
+            default: {
+              VLOG(2) << "Unknown comparison direction";
+            }
           }
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;

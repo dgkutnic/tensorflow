@@ -113,8 +113,12 @@ TEST_P(PlaidMLLogicalOperationTest, LogicalAndOp) {
 }
 
 TEST_P(PlaidMLLogicalOperationTest, LogicalNotOp) {
-  std::vector<int> input_A = {0, 0, 1, 1, 0, 0, 1, 1, 0};
-  std::vector<int> output_C = {1, 1, 0, 0, 1, 1, 1, 1, 0};
+  std::vector<int> input_A =  {static_cast<int>(0x00000000), static_cast<int>(0x11111111), static_cast<int>(0x22222222), //
+                               static_cast<int>(0x33333333), static_cast<int>(0x44444444), static_cast<int>(0x55555555), //
+                               static_cast<int>(0xDDDDDDDD), static_cast<int>(0xEEEEEEEE), static_cast<int>(0xFFFFFFFF)};
+  std::vector<int> output_C = {static_cast<int>(0xFFFFFFFF), static_cast<int>(0xEEEEEEEE), static_cast<int>(0xDDDDDDDD), //
+                               static_cast<int>(0xCCCCCCCC), static_cast<int>(0xBBBBBBBB), static_cast<int>(0xAAAAAAAA), //
+                               static_cast<int>(0x22222222), static_cast<int>(0x11111111), static_cast<int>(0x00000000)};
 
   TestCaseVal inputs = {input_A};
   TestCaseVal results = {output_C};

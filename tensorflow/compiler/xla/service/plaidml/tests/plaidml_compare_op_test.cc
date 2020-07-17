@@ -87,13 +87,119 @@ class PlaidMLCompareOperationTest
   }
 };
 
-TEST_P(PlaidMLCompareOperationTest, CompOp) {
+TEST_P(PlaidMLCompareOperationTest, CompEqOp) {
+  std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+  std::vector<int8_t> expected_val = {0, 0, 0, 0, 1, 0, 0, 0, 0};
+  auto comp_type = ComparisonDirection::kEq;
+
+  TestCaseVal inputs = {B, A};
+  TestCaseVal_int results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("CompOp");
+  CompareTestSpec spec = GetParam();
+
+  auto fcheck_lines = spec.filecheck_lines;
+  fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xi1>\n");
+
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
+
+  HloInstruction* lhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(0, param_shape, "input"));
+  HloInstruction* rhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(1, param_shape, "input"));
+
+  builder.AddInstruction(HloInstruction::CreateCompare(param_shape, lhs, rhs, comp_type));
+  CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
+}
+
+TEST_P(PlaidMLCompareOperationTest, CompLtOp) {
   std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
   std::vector<int8_t> expected_val = {1, 1, 1, 1, 0, 0, 0, 0, 0};
-  //std::vector<int8_t> expected_val = {0, 0, 0, 0, 1, 0, 0, 0, 0};
   auto comp_type = ComparisonDirection::kLt;
-  //auto comp_type = ComparisonDirection::kEq;
+
+  TestCaseVal inputs = {B, A};
+  TestCaseVal_int results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("CompOp");
+  CompareTestSpec spec = GetParam();
+
+  auto fcheck_lines = spec.filecheck_lines;
+  fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xi1>\n");
+
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
+
+  HloInstruction* lhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(0, param_shape, "input"));
+  HloInstruction* rhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(1, param_shape, "input"));
+
+  builder.AddInstruction(HloInstruction::CreateCompare(param_shape, lhs, rhs, comp_type));
+  CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
+}
+
+TEST_P(PlaidMLCompareOperationTest, CompLeOp) {
+  std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+  std::vector<int8_t> expected_val = {1, 1, 1, 1, 1, 0, 0, 0, 0};
+  auto comp_type = ComparisonDirection::kLe;
+
+  TestCaseVal inputs = {B, A};
+  TestCaseVal_int results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("CompOp");
+  CompareTestSpec spec = GetParam();
+
+  auto fcheck_lines = spec.filecheck_lines;
+  fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xi1>\n");
+
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
+
+  HloInstruction* lhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(0, param_shape, "input"));
+  HloInstruction* rhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(1, param_shape, "input"));
+
+  builder.AddInstruction(HloInstruction::CreateCompare(param_shape, lhs, rhs, comp_type));
+  CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
+}
+
+TEST_P(PlaidMLCompareOperationTest, CompGtOp) {
+  std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+  std::vector<int8_t> expected_val = {0, 0, 0, 0, 0, 1, 1, 1, 1};
+  auto comp_type = ComparisonDirection::kGt;
+
+  TestCaseVal inputs = {B, A};
+  TestCaseVal_int results = {expected_val};
+  TestCasePairs testcase_pairs = {{inputs, results}};
+
+  HloComputation::Builder builder("CompOp");
+  CompareTestSpec spec = GetParam();
+
+  auto fcheck_lines = spec.filecheck_lines;
+  fcheck_lines.insert(4,"CHECK: func @hlo_module(%arg0: tensor<3x3xf32>, %arg1: tensor<3x3xf32>) -> tensor<3x3xi1>\n");
+
+  auto param_shape = ShapeUtil::MakeShape(spec.primitive_type, {3, 3});
+
+  HloInstruction* lhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(0, param_shape, "input"));
+  HloInstruction* rhs = builder.AddInstruction(
+      HloInstruction::CreateParameter(1, param_shape, "input"));
+
+  builder.AddInstruction(HloInstruction::CreateCompare(param_shape, lhs, rhs, comp_type));
+  CompileAndCheck(builder.Build(), fcheck_lines, testcase_pairs);
+}
+
+TEST_P(PlaidMLCompareOperationTest, CompGeOp) {
+  std::vector<float> A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<float> B = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+  std::vector<int8_t> expected_val = {0, 0, 0, 0, 1, 1, 1, 1, 1};
+  auto comp_type = ComparisonDirection::kGe;
 
   TestCaseVal inputs = {B, A};
   TestCaseVal_int results = {expected_val};
