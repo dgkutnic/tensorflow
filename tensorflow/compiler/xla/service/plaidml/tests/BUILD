@@ -115,7 +115,7 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_i3d_test",
-    srcs = ["plaidml_i3d_test.cc"],
+    srcs = ["plaidml_i3d_test.cc", "i3d_pretrained_inputs_and_weights.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",

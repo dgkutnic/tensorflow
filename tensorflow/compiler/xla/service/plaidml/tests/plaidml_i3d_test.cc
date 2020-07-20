@@ -8,6 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
+#include "tensorflow/compiler/xla/service/plaidml/tests/i3d_pretrained_inputs_and_weights.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
@@ -16,10 +17,16 @@
 #include "tensorflow/compiler/xla/tests/test_utils.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
+#include "plaidml/testenv.h"
+
+using ::plaidml::edsl::TensorBuffers;
 
 namespace xla {
 namespace plaidml {
 namespace {
+
+using TestCaseVal = std::vector<std::vector<float>>;
+using TestCasePairs = std::map<TestCaseVal, TestCaseVal>;
 
 struct I3DTestSpec {
   PrimitiveType primitive_type;
@@ -35,7 +42,8 @@ class PlaidMLI3DOperationTest
       public ::testing::WithParamInterface<I3DTestSpec> {
  protected:
   Status CompileAndCheck(std::unique_ptr<HloModule> hlo_module,
-                       const string& filecheck_lines) {
+                       const string& filecheck_lines,
+                       const TestCasePairs& testcase_pairs) {
 
     auto program = CompileToProgram(std::move(hlo_module));
 
@@ -44,12 +52,360 @@ class PlaidMLI3DOperationTest
     //TF_ASSERT_OK(fc_result.status());
     EXPECT_TRUE(fc_result.ValueOrDie());
 
-    return Status::OK();
+    VLOG(0) << "Evaluating results";
 
+    for (auto pair : testcase_pairs) {
+
+      TensorBuffers inp;
+      TensorBuffers exp;
+
+      auto program_inputs = program->inputs();
+      auto tcp_inputs = pair.first;
+
+      if (tcp_inputs.size() != program_inputs.size()) {
+        VLOG(1) << "Found mismatch in input sizes: tcp " << tcp_inputs.size() << " program " << program_inputs.size();
+      }
+
+      for (auto i = 0; i < program_inputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseInput " << i;
+        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
+      }
+
+      auto program_outputs = program->outputs();
+      auto tcp_outputs = pair.second;
+
+      if (tcp_outputs.size() != program_outputs.size()) {
+        VLOG(1) << "Found mismatch in output sizes: tcp " << tcp_outputs.size() << " program " << program_outputs.size();
+      }
+
+      for (auto i = 0; i < program_outputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseOutput " << i;
+        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
+      }
+
+      VLOG(0) << "Calling checkProgram";
+
+      checkProgram(*program, inp, exp);
+    }
+  return Status::OK();
   }
 };
 
 TEST_P(PlaidMLI3DOperationTest, SimpleI3D) {
+  std::vector<float> input_tensor(4816896, 1.0);
+  TestCaseVal I3D_WeightsInputs = {
+   ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_w, //
+    {0}, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Conv3d_2c_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Conv3d_2b_1x1_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Conv3d_1a_7x7_conv_3d_w, //
+    input_tensor, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Conv3d_1a_7x7_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Conv3d_2b_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Conv3d_2c_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
+    {0}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
+    {0.001}, //
+   ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
+   ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_b //
+  };
+
+  TestCaseVal I3D_Output = {                                        //
+ {1.36115777e+00, -9.25704241e-02, 1.30210996e+00, 2.40541816e-01, //
+ 1.90456554e-01, 2.02436447e+00, -4.22138385e-02, -3.98445517e-01, //
+ -5.88495731e-01, -1.77797958e-01, -3.37644547e-01, 2.29504034e-02, //
+ 2.20064476e-01, 8.24745297e-02, 1.33586943e+00, -2.40531850e+00, //
+ 7.67602682e-01, -1.07719696e+00, -2.49697283e-01, -5.99917710e-01, //
+ 2.91291803e-01, 1.46244451e-01, -3.44758660e-01, 4.08934981e-01, //
+ 6.25630558e-01, -3.64905804e-01, 3.53274554e-01, -2.82894105e-01, //
+ 4.70144898e-01, -2.97866970e-01, -1.21602297e+00, 4.65300530e-01, //
+ -8.24328661e-01, -1.09941614e+00, -5.52304268e-01, 2.22196534e-01, //
+ 2.26941869e-01, 3.80257100e-01, -6.47754312e-01, -1.07142664e-01, //
+ 1.82933187e+00, -2.08012149e-01, -7.50861943e-01, -8.07339847e-01, //
+ 7.47818887e-01, 9.38896954e-01, -1.21331084e+00, 6.34648502e-01, //
+ 1.21983898e+00, 1.24158072e+00, 1.10506767e-03, 1.17576396e+00, //
+ 3.08956623e-01, -1.37616796e-02, 5.13146877e-01, -7.20351934e-02, //
+ -6.90240920e-01, -3.38738948e-01, -1.60449207e+00, -1.44141293e+00, //
+ 2.17872500e+00, 5.18199265e-01, 7.97960460e-01, 8.76688302e-01, //
+ -5.13752997e-01, 1.45521748e+00, -1.87466785e-01, 1.32958078e+00, //
+ -2.49689505e-01, 6.19841397e-01, 4.42780107e-01, 7.98769951e-01, //
+ -1.29661298e+00, -2.52816737e-01, 5.54288805e-01, -5.00141144e-01, //
+ 3.33001018e-02, -2.83190459e-01, -1.81236982e+00, 1.14218676e+00, //
+ -7.94953346e-01, -1.25346661e-01, -5.59972227e-01, -8.93296003e-01, //
+ 2.87666827e-01, -1.55514657e+00, 1.44021645e-01, 2.12836385e-01, //
+ -8.02601993e-01, -6.21478558e-01, -3.18658918e-01, -4.39975023e-01, //
+ -4.59527999e-01, 1.01873291e+00, -7.67528594e-01, -1.49597168e+00, //
+ 4.20037776e-01, 2.54349858e-01, -8.95907402e-01, -8.95410836e-01, //
+ 4.79305506e-01, 6.45177782e-01, -6.16594143e-02, 1.71183431e+00, //
+ 1.15173303e-01, 7.85934150e-01, -1.35016596e+00, 1.19362867e+00, //
+ -2.13436484e-01, -1.92075208e-01, -6.25110447e-01, -2.01856709e+00, //
+ 3.12850982e-01, 1.65152550e-02, -4.34084982e-01, 1.49559021e-01, //
+ -1.34063447e+00, -1.32336104e+00, -1.21310890e-01, -1.10046399e+00, //
+ -5.57494581e-01, 8.74849558e-01, 1.28561747e+00, -6.01360321e-01, //
+ 6.19882166e-01, -1.50562012e+00, 9.88095179e-02, 1.27202988e-01, //
+ 4.93490696e-01, -3.77234966e-01, 8.84068191e-01, 1.07279861e+00, //
+ 1.00563824e+00, 5.97585976e-01, 1.87570021e-01, -1.50107062e+00, //
+ 9.36115801e-01, 7.80192614e-02, 1.76520929e-01, -2.12210879e-01, //
+ 1.15341902e+00, -2.11425379e-01, -4.72263396e-02, 1.07705438e+00, //
+ -1.27979362e+00, 1.10034853e-01, -1.14749253e+00, -3.37488323e-01, //
+ -1.16052544e+00, -5.77291191e-01, 9.56049681e-01, -1.54831484e-01, //
+ 8.00914586e-01, 2.37857103e-01, 2.47131035e-01, 5.12361288e-01, //
+ 5.93440115e-01, 1.29512596e+00, 6.64509535e-01, -5.81973553e-01, //
+ -9.16990280e-01, -1.17890799e+00, -5.99989593e-01, 3.19856815e-02, //
+ 8.86316717e-01, 7.15937555e-01, -6.73762977e-01, -5.31707704e-01, //
+ 1.28538430e+00, -7.11807385e-02, -1.40354192e+00, -1.01641500e+00, //
+ 9.55684483e-01, -1.49109399e+00, -5.89700699e-01, 6.66635692e-01, //
+ 1.14248431e+00, 3.30772251e-01, -3.12163681e-01, -9.67844248e-01, //
+ 6.22011244e-01, -8.19202363e-01, -3.77939612e-01, 1.57472289e+00, //
+ -5.74282587e-01, -7.62375891e-01, 5.51718950e-01, 5.17831564e-01, //
+ -2.84638166e-01, -8.32276285e-01, -7.76813209e-01, 1.91364288e-01, //
+ 4.54202026e-01, 3.05521637e-01, -8.66651237e-02, -7.68917859e-01, //
+ -3.13103825e-01, -3.50339890e-01, 5.75359285e-01, 1.87161958e+00, //
+ 1.18117559e+00, 5.72082937e-01, 1.30957639e+00, 1.21064579e+00, //
+ -3.36213440e-01, 3.21530700e-01, 4.29636151e-01, 7.31868804e-01, //
+ -2.81717873e+00, 6.24328852e-01, -1.15685987e+00, -5.98944008e-01, //
+ -1.11637272e-01, -5.09099551e-02, -1.18785393e+00, -1.00005639e+00, //
+ 8.85515213e-01, -2.91341335e-01, -6.15264587e-02, 5.42185485e-01, //
+ 8.21514308e-01, -1.14872205e+00, -6.89454615e-01, 3.56900692e-02, //
+ 3.77838463e-01, -4.88398880e-01, -8.02794933e-01, 1.19418728e+00, //
+ -1.16547775e+00, 6.91530526e-01, -9.11949456e-01, -1.13560520e-01, //
+ 1.41427323e-01, 5.80799818e-01, 2.46901050e-01, 5.26161015e-01, //
+ 2.84104139e-01, -1.24386799e+00, -3.75214666e-01, -6.22632086e-01, //
+ 5.33279002e-01, 1.72520041e-01, -1.77410245e-01, 2.18155250e-01, //
+ 8.86293113e-01, -8.85353744e-01, -5.29651642e-01, 1.32118452e+00, //
+ 1.03922927e+00, 2.96400279e-01, 9.34633732e-01, -2.58455753e-01, //
+ -1.05753899e+00, 2.18740311e-02, -8.91190231e-01, 6.74821436e-02, //
+ 6.36953235e-01, 6.46445274e-01, 3.18000168e-01, -1.32692635e+00, //
+ 3.61725807e-01, 1.54259109e+00, 1.81573141e+00, 9.21162903e-01, //
+ 8.10098112e-01, -2.46560529e-01, 6.92840397e-01, 1.01654994e+00, //
+ 6.03058159e-01, 3.60026270e-01, -2.79703331e+00, -3.39503169e-01, //
+ -1.90089905e+00, -8.35764706e-02, 1.71646893e+00, 1.12751973e+00, //
+ -5.15518844e-01, 7.90790558e-01, 1.06711912e+00, 2.70442218e-01, //
+ 4.07860726e-01, -5.54575741e-01, 6.11209095e-01, -9.86775815e-01, //
+ -2.43562296e-01, 3.83567810e-01, -1.42845914e-01, 1.10776150e+00, //
+ 1.10910809e+00, -7.21112788e-01, -2.45437130e-01, 9.38772857e-01, //
+ 9.43781137e-01, 6.77969933e-01, -2.04461718e+00, -2.91981429e-01, //
+ 7.62786865e-02, -3.97011846e-01, -7.14856327e-01, 5.60182445e-02, //
+ 8.37950885e-01, -1.14178538e+00, 1.45111069e-01, -2.31330395e-02, //
+ 6.36232913e-01, 5.38575172e-01, 9.42902565e-01, 1.02181768e+00, //
+ 5.68348467e-01, -1.30475128e+00, -2.02616763e+00, -2.38314795e+00, //
+ -7.64077246e-01, -4.52006191e-01, 5.75258732e-01, -7.20031679e-01, //
+ 2.00641251e+00, 2.45560423e-01, -1.27088630e+00, -1.18817247e-01, //
+ 1.03269410e+00, -3.54836017e-01, 4.71584171e-01, -5.71707010e-01, //
+ 3.63757201e-02, 8.97575557e-01, -1.62614572e+00, 1.66243994e+00, //
+ 1.03480828e+00, -3.03975195e-01, 1.53642491e-01, -1.84786711e-02, //
+ -8.38966191e-01, 6.83267772e-01, 9.35394287e-01, -1.40310585e+00, //
+ -1.41984999e+00, -4.28116649e-01, 7.41600990e-01, -2.22068503e-01, //
+ -4.77254748e-01, -3.10642928e-01, -2.80534744e+00, -1.27905524e+00, //
+ 1.90623358e-01, -2.70495147e-01, -1.30966321e-01, 1.03605950e+00, //
+ -3.89739513e-01, -8.98179352e-01, -1.16929853e+00, -2.24578261e+00, //
+ -1.08559631e-01, -6.97912350e-02, -4.59576517e-01, 1.02665961e+00, //
+ 5.53025305e-01, 7.65223205e-01, -1.07503855e+00, -1.75259459e+00, //
+ 2.58437872e-01, 1.98845828e+00, -1.30758393e+00, 3.89978737e-01, //
+ -5.08784533e-01, 4.65647131e-01, -9.00148526e-02, -3.19232464e-01, //
+ 1.16787804e-02, 7.65999317e-01, -1.50703594e-01, 1.48633063e+00, //
+ 1.17828570e-01, 2.56194979e-01, 2.07902145e+00, 1.12742083e-02, //
+ -1.56786501e+00, 1.25459683e+00, 1.54332161e+00, 9.42928791e-02, //
+ 2.46087953e-01, -9.03506279e-02, 1.93255806e+00, -2.28526667e-01, //
+ 2.43964493e-01, 7.20125139e-01, -8.46654236e-01, -4.14875895e-01, //
+ -2.62063175e-01, 9.91378307e-01, -4.12898153e-01, 1.37655699e+00, //
+ -8.46551239e-01, -1.86010435e-01, 1.04950702e+00, -1.12020802e+00, //
+ 2.77794480e-01, -3.15022945e-01, 1.37116003e+00, -1.19079983e+00}, //
+};
+
+TestCasePairs testcase_pairs = {{I3D_WeightsInputs, I3D_Output}};
+
   I3DTestSpec spec = GetParam();
 
   HloModuleConfig cfg;
@@ -896,14 +1252,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.122 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
   %convert.123 = f32[] convert(f32[] %constant.122), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
   %reduce.128 = f32[64]{0} reduce(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121, f32[] %convert.123), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_1a_7x7_batch_norm_normalize_moments_mean-reduction.124, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.129 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.130 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %multiply.131 = u32[] multiply(u32[] %get-dimension-size.129, u32[] %get-dimension-size.130), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.132 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %multiply.133 = u32[] multiply(u32[] %multiply.131, u32[] %get-dimension-size.132), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.134 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %multiply.135 = u32[] multiply(u32[] %multiply.133, u32[] %get-dimension-size.134), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
-  %convert.136 = f32[] convert(u32[] %multiply.135), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.129 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.130 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %multiply.131 = s32[] multiply(s32[] %get-dimension-size.129, s32[] %get-dimension-size.130), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.132 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %multiply.133 = s32[] multiply(s32[] %multiply.131, s32[] %get-dimension-size.132), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.134 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.121), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %multiply.135 = s32[] multiply(s32[] %multiply.133, s32[] %get-dimension-size.134), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
+  %convert.136 = f32[] convert(s32[] %multiply.135), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
   %broadcast.137 = f32[64]{0} broadcast(f32[] %convert.136), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
   %divide.138 = f32[64]{0} divide(f32[64]{0} %reduce.128, f32[64]{0} %broadcast.137), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
   %convert.139 = f32[64]{0} convert(f32[64]{0} %divide.138), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/mean"}
@@ -916,14 +1272,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.146 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
   %convert.147 = f32[] convert(f32[] %constant.146), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
   %reduce.152 = f32[64]{0} reduce(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145, f32[] %convert.147), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_1a_7x7_batch_norm_normalize_moments_variance-reduction.148, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.153 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.154 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %multiply.155 = u32[] multiply(u32[] %get-dimension-size.153, u32[] %get-dimension-size.154), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.156 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %multiply.157 = u32[] multiply(u32[] %multiply.155, u32[] %get-dimension-size.156), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.158 = u32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %multiply.159 = u32[] multiply(u32[] %multiply.157, u32[] %get-dimension-size.158), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
-  %convert.160 = f32[] convert(u32[] %multiply.159), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.153 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.154 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %multiply.155 = s32[] multiply(s32[] %get-dimension-size.153, s32[] %get-dimension-size.154), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.156 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %multiply.157 = s32[] multiply(s32[] %multiply.155, s32[] %get-dimension-size.156), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.158 = s32[] get-dimension-size(f32[1,16,112,112,64]{4,3,2,1,0} %convert.145), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %multiply.159 = s32[] multiply(s32[] %multiply.157, s32[] %get-dimension-size.158), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
+  %convert.160 = f32[] convert(s32[] %multiply.159), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
   %broadcast.161 = f32[64]{0} broadcast(f32[] %convert.160), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
   %divide.162 = f32[64]{0} divide(f32[64]{0} %reduce.152, f32[64]{0} %broadcast.161), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
   %convert.163 = f32[64]{0} convert(f32[64]{0} %divide.162), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/normalize_moments/variance"}
@@ -948,14 +1304,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.188 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
   %convert.189 = f32[] convert(f32[] %constant.188), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.194 = f32[64]{0} reduce(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187, f32[] %convert.189), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_2b_1x1_batch_norm_normalize_moments_mean-reduction.190, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.195 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.196 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.197 = u32[] multiply(u32[] %get-dimension-size.195, u32[] %get-dimension-size.196), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.198 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.199 = u32[] multiply(u32[] %multiply.197, u32[] %get-dimension-size.198), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.200 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.201 = u32[] multiply(u32[] %multiply.199, u32[] %get-dimension-size.200), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.202 = f32[] convert(u32[] %multiply.201), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.195 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.196 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.197 = s32[] multiply(s32[] %get-dimension-size.195, s32[] %get-dimension-size.196), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.198 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.199 = s32[] multiply(s32[] %multiply.197, s32[] %get-dimension-size.198), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.200 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.187), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.201 = s32[] multiply(s32[] %multiply.199, s32[] %get-dimension-size.200), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.202 = f32[] convert(s32[] %multiply.201), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.203 = f32[64]{0} broadcast(f32[] %convert.202), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
   %divide.204 = f32[64]{0} divide(f32[64]{0} %reduce.194, f32[64]{0} %broadcast.203), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
   %convert.205 = f32[64]{0} convert(f32[64]{0} %divide.204), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/mean"}
@@ -968,14 +1324,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.212 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
   %convert.213 = f32[] convert(f32[] %constant.212), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.218 = f32[64]{0} reduce(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211, f32[] %convert.213), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_2b_1x1_batch_norm_normalize_moments_variance-reduction.214, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.219 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.220 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.221 = u32[] multiply(u32[] %get-dimension-size.219, u32[] %get-dimension-size.220), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.222 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.223 = u32[] multiply(u32[] %multiply.221, u32[] %get-dimension-size.222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.224 = u32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.225 = u32[] multiply(u32[] %multiply.223, u32[] %get-dimension-size.224), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.226 = f32[] convert(u32[] %multiply.225), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.219 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.220 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.221 = s32[] multiply(s32[] %get-dimension-size.219, s32[] %get-dimension-size.220), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.222 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.223 = s32[] multiply(s32[] %multiply.221, s32[] %get-dimension-size.222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.224 = s32[] get-dimension-size(f32[1,16,56,56,64]{4,3,2,1,0} %convert.211), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.225 = s32[] multiply(s32[] %multiply.223, s32[] %get-dimension-size.224), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.226 = f32[] convert(s32[] %multiply.225), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.227 = f32[64]{0} broadcast(f32[] %convert.226), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
   %divide.228 = f32[64]{0} divide(f32[64]{0} %reduce.218, f32[64]{0} %broadcast.227), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
   %convert.229 = f32[64]{0} convert(f32[64]{0} %divide.228), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/normalize_moments/variance"}
@@ -998,14 +1354,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.248 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
   %convert.249 = f32[] convert(f32[] %constant.248), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
   %reduce.254 = f32[192]{0} reduce(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247, f32[] %convert.249), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_2c_3x3_batch_norm_normalize_moments_mean-reduction.250, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.255 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.256 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.257 = u32[] multiply(u32[] %get-dimension-size.255, u32[] %get-dimension-size.256), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.258 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.259 = u32[] multiply(u32[] %multiply.257, u32[] %get-dimension-size.258), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.260 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.261 = u32[] multiply(u32[] %multiply.259, u32[] %get-dimension-size.260), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
-  %convert.262 = f32[] convert(u32[] %multiply.261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.255 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.256 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.257 = s32[] multiply(s32[] %get-dimension-size.255, s32[] %get-dimension-size.256), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.258 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.259 = s32[] multiply(s32[] %multiply.257, s32[] %get-dimension-size.258), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.260 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.247), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.261 = s32[] multiply(s32[] %multiply.259, s32[] %get-dimension-size.260), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
+  %convert.262 = f32[] convert(s32[] %multiply.261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.263 = f32[192]{0} broadcast(f32[] %convert.262), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
   %divide.264 = f32[192]{0} divide(f32[192]{0} %reduce.254, f32[192]{0} %broadcast.263), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
   %convert.265 = f32[192]{0} convert(f32[192]{0} %divide.264), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/mean"}
@@ -1018,14 +1374,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.272 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
   %convert.273 = f32[] convert(f32[] %constant.272), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
   %reduce.278 = f32[192]{0} reduce(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271, f32[] %convert.273), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Conv3d_2c_3x3_batch_norm_normalize_moments_variance-reduction.274, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.279 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.280 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.281 = u32[] multiply(u32[] %get-dimension-size.279, u32[] %get-dimension-size.280), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.282 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.283 = u32[] multiply(u32[] %multiply.281, u32[] %get-dimension-size.282), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.284 = u32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.285 = u32[] multiply(u32[] %multiply.283, u32[] %get-dimension-size.284), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
-  %convert.286 = f32[] convert(u32[] %multiply.285), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.279 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.280 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.281 = s32[] multiply(s32[] %get-dimension-size.279, s32[] %get-dimension-size.280), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.282 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.283 = s32[] multiply(s32[] %multiply.281, s32[] %get-dimension-size.282), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.284 = s32[] get-dimension-size(f32[1,16,56,56,192]{4,3,2,1,0} %convert.271), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.285 = s32[] multiply(s32[] %multiply.283, s32[] %get-dimension-size.284), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
+  %convert.286 = f32[] convert(s32[] %multiply.285), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.287 = f32[192]{0} broadcast(f32[] %convert.286), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
   %divide.288 = f32[192]{0} divide(f32[192]{0} %reduce.278, f32[192]{0} %broadcast.287), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
   %convert.289 = f32[192]{0} convert(f32[192]{0} %divide.288), metadata={op_type="Mean" op_name="RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/normalize_moments/variance"}
@@ -1050,14 +1406,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.611 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.612 = f32[] convert(f32[] %constant.611), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.617 = f32[64]{0} reduce(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610, f32[] %convert.612), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.613, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.618 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.619 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.620 = u32[] multiply(u32[] %get-dimension-size.618, u32[] %get-dimension-size.619), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.621 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.622 = u32[] multiply(u32[] %multiply.620, u32[] %get-dimension-size.621), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.623 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.624 = u32[] multiply(u32[] %multiply.622, u32[] %get-dimension-size.623), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.625 = f32[] convert(u32[] %multiply.624), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.618 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.619 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.620 = s32[] multiply(s32[] %get-dimension-size.618, s32[] %get-dimension-size.619), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.621 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.622 = s32[] multiply(s32[] %multiply.620, s32[] %get-dimension-size.621), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.623 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.610), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.624 = s32[] multiply(s32[] %multiply.622, s32[] %get-dimension-size.623), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.625 = f32[] convert(s32[] %multiply.624), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.626 = f32[64]{0} broadcast(f32[] %convert.625), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.627 = f32[64]{0} divide(f32[64]{0} %reduce.617, f32[64]{0} %broadcast.626), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.628 = f32[64]{0} convert(f32[64]{0} %divide.627), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1070,14 +1426,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.635 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.636 = f32[] convert(f32[] %constant.635), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.641 = f32[64]{0} reduce(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634, f32[] %convert.636), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.637, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.642 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.643 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.644 = u32[] multiply(u32[] %get-dimension-size.642, u32[] %get-dimension-size.643), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.645 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.646 = u32[] multiply(u32[] %multiply.644, u32[] %get-dimension-size.645), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.647 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.648 = u32[] multiply(u32[] %multiply.646, u32[] %get-dimension-size.647), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.649 = f32[] convert(u32[] %multiply.648), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.642 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.643 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.644 = s32[] multiply(s32[] %get-dimension-size.642, s32[] %get-dimension-size.643), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.645 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.646 = s32[] multiply(s32[] %multiply.644, s32[] %get-dimension-size.645), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.647 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.634), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.648 = s32[] multiply(s32[] %multiply.646, s32[] %get-dimension-size.647), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.649 = f32[] convert(s32[] %multiply.648), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.650 = f32[64]{0} broadcast(f32[] %convert.649), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.651 = f32[64]{0} divide(f32[64]{0} %reduce.641, f32[64]{0} %broadcast.650), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.652 = f32[64]{0} convert(f32[64]{0} %divide.651), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1105,14 +1461,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.315 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.316 = f32[] convert(f32[] %constant.315), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.321 = f32[96]{0} reduce(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314, f32[] %convert.316), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.317, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.322 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.323 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.324 = u32[] multiply(u32[] %get-dimension-size.322, u32[] %get-dimension-size.323), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.325 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.326 = u32[] multiply(u32[] %multiply.324, u32[] %get-dimension-size.325), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.327 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.328 = u32[] multiply(u32[] %multiply.326, u32[] %get-dimension-size.327), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.329 = f32[] convert(u32[] %multiply.328), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.322 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.323 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.324 = s32[] multiply(s32[] %get-dimension-size.322, s32[] %get-dimension-size.323), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.325 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.326 = s32[] multiply(s32[] %multiply.324, s32[] %get-dimension-size.325), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.327 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.314), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.328 = s32[] multiply(s32[] %multiply.326, s32[] %get-dimension-size.327), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.329 = f32[] convert(s32[] %multiply.328), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.330 = f32[96]{0} broadcast(f32[] %convert.329), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.331 = f32[96]{0} divide(f32[96]{0} %reduce.321, f32[96]{0} %broadcast.330), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.332 = f32[96]{0} convert(f32[96]{0} %divide.331), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1125,14 +1481,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.339 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.340 = f32[] convert(f32[] %constant.339), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.345 = f32[96]{0} reduce(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338, f32[] %convert.340), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.341, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.346 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.347 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.348 = u32[] multiply(u32[] %get-dimension-size.346, u32[] %get-dimension-size.347), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.349 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.350 = u32[] multiply(u32[] %multiply.348, u32[] %get-dimension-size.349), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.351 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.352 = u32[] multiply(u32[] %multiply.350, u32[] %get-dimension-size.351), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.353 = f32[] convert(u32[] %multiply.352), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.346 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.347 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.348 = s32[] multiply(s32[] %get-dimension-size.346, s32[] %get-dimension-size.347), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.349 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.350 = s32[] multiply(s32[] %multiply.348, s32[] %get-dimension-size.349), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.351 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.338), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.352 = s32[] multiply(s32[] %multiply.350, s32[] %get-dimension-size.351), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.353 = f32[] convert(s32[] %multiply.352), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.354 = f32[96]{0} broadcast(f32[] %convert.353), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.355 = f32[96]{0} divide(f32[96]{0} %reduce.345, f32[96]{0} %broadcast.354), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.356 = f32[96]{0} convert(f32[96]{0} %divide.355), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1155,14 +1511,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.375 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.376 = f32[] convert(f32[] %constant.375), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.381 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374, f32[] %convert.376), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.377, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.382 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.383 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.384 = u32[] multiply(u32[] %get-dimension-size.382, u32[] %get-dimension-size.383), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.385 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.386 = u32[] multiply(u32[] %multiply.384, u32[] %get-dimension-size.385), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.387 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.388 = u32[] multiply(u32[] %multiply.386, u32[] %get-dimension-size.387), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.389 = f32[] convert(u32[] %multiply.388), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.382 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.383 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.384 = s32[] multiply(s32[] %get-dimension-size.382, s32[] %get-dimension-size.383), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.385 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.386 = s32[] multiply(s32[] %multiply.384, s32[] %get-dimension-size.385), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.387 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.374), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.388 = s32[] multiply(s32[] %multiply.386, s32[] %get-dimension-size.387), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.389 = f32[] convert(s32[] %multiply.388), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.390 = f32[128]{0} broadcast(f32[] %convert.389), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.391 = f32[128]{0} divide(f32[128]{0} %reduce.381, f32[128]{0} %broadcast.390), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.392 = f32[128]{0} convert(f32[128]{0} %divide.391), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1175,14 +1531,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.399 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.400 = f32[] convert(f32[] %constant.399), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.405 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398, f32[] %convert.400), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.401, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.406 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.407 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.408 = u32[] multiply(u32[] %get-dimension-size.406, u32[] %get-dimension-size.407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.409 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.410 = u32[] multiply(u32[] %multiply.408, u32[] %get-dimension-size.409), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.411 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.412 = u32[] multiply(u32[] %multiply.410, u32[] %get-dimension-size.411), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.413 = f32[] convert(u32[] %multiply.412), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.406 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.407 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.408 = s32[] multiply(s32[] %get-dimension-size.406, s32[] %get-dimension-size.407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.409 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.410 = s32[] multiply(s32[] %multiply.408, s32[] %get-dimension-size.409), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.411 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.398), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.412 = s32[] multiply(s32[] %multiply.410, s32[] %get-dimension-size.411), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.413 = f32[] convert(s32[] %multiply.412), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.414 = f32[128]{0} broadcast(f32[] %convert.413), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.415 = f32[128]{0} divide(f32[128]{0} %reduce.405, f32[128]{0} %broadcast.414), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.416 = f32[128]{0} convert(f32[128]{0} %divide.415), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1210,14 +1566,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.432 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.433 = f32[] convert(f32[] %constant.432), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.438 = f32[16]{0} reduce(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431, f32[] %convert.433), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.434, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.439 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.440 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.441 = u32[] multiply(u32[] %get-dimension-size.439, u32[] %get-dimension-size.440), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.442 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.443 = u32[] multiply(u32[] %multiply.441, u32[] %get-dimension-size.442), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.444 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.445 = u32[] multiply(u32[] %multiply.443, u32[] %get-dimension-size.444), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.446 = f32[] convert(u32[] %multiply.445), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.439 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.440 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.441 = s32[] multiply(s32[] %get-dimension-size.439, s32[] %get-dimension-size.440), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.442 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.443 = s32[] multiply(s32[] %multiply.441, s32[] %get-dimension-size.442), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.444 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.431), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.445 = s32[] multiply(s32[] %multiply.443, s32[] %get-dimension-size.444), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.446 = f32[] convert(s32[] %multiply.445), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.447 = f32[16]{0} broadcast(f32[] %convert.446), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.448 = f32[16]{0} divide(f32[16]{0} %reduce.438, f32[16]{0} %broadcast.447), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.449 = f32[16]{0} convert(f32[16]{0} %divide.448), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1230,14 +1586,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.456 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.457 = f32[] convert(f32[] %constant.456), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.462 = f32[16]{0} reduce(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455, f32[] %convert.457), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.458, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.463 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.464 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.465 = u32[] multiply(u32[] %get-dimension-size.463, u32[] %get-dimension-size.464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.466 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.467 = u32[] multiply(u32[] %multiply.465, u32[] %get-dimension-size.466), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.468 = u32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.469 = u32[] multiply(u32[] %multiply.467, u32[] %get-dimension-size.468), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.470 = f32[] convert(u32[] %multiply.469), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.463 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.464 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.465 = s32[] multiply(s32[] %get-dimension-size.463, s32[] %get-dimension-size.464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.466 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.467 = s32[] multiply(s32[] %multiply.465, s32[] %get-dimension-size.466), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.468 = s32[] get-dimension-size(f32[1,16,28,28,16]{4,3,2,1,0} %convert.455), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.469 = s32[] multiply(s32[] %multiply.467, s32[] %get-dimension-size.468), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.470 = f32[] convert(s32[] %multiply.469), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.471 = f32[16]{0} broadcast(f32[] %convert.470), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.472 = f32[16]{0} divide(f32[16]{0} %reduce.462, f32[16]{0} %broadcast.471), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.473 = f32[16]{0} convert(f32[16]{0} %divide.472), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1260,14 +1616,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.492 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.493 = f32[] convert(f32[] %constant.492), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.498 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491, f32[] %convert.493), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.494, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.499 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.500 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.501 = u32[] multiply(u32[] %get-dimension-size.499, u32[] %get-dimension-size.500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.502 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.503 = u32[] multiply(u32[] %multiply.501, u32[] %get-dimension-size.502), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.504 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.505 = u32[] multiply(u32[] %multiply.503, u32[] %get-dimension-size.504), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.506 = f32[] convert(u32[] %multiply.505), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.499 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.500 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.501 = s32[] multiply(s32[] %get-dimension-size.499, s32[] %get-dimension-size.500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.502 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.503 = s32[] multiply(s32[] %multiply.501, s32[] %get-dimension-size.502), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.504 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.491), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.505 = s32[] multiply(s32[] %multiply.503, s32[] %get-dimension-size.504), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.506 = f32[] convert(s32[] %multiply.505), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.507 = f32[32]{0} broadcast(f32[] %convert.506), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.508 = f32[32]{0} divide(f32[32]{0} %reduce.498, f32[32]{0} %broadcast.507), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.509 = f32[32]{0} convert(f32[32]{0} %divide.508), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1280,14 +1636,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.516 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.517 = f32[] convert(f32[] %constant.516), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.522 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515, f32[] %convert.517), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.518, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.523 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.524 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.525 = u32[] multiply(u32[] %get-dimension-size.523, u32[] %get-dimension-size.524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.526 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.527 = u32[] multiply(u32[] %multiply.525, u32[] %get-dimension-size.526), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.528 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.529 = u32[] multiply(u32[] %multiply.527, u32[] %get-dimension-size.528), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.530 = f32[] convert(u32[] %multiply.529), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.523 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.524 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.525 = s32[] multiply(s32[] %get-dimension-size.523, s32[] %get-dimension-size.524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.526 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.527 = s32[] multiply(s32[] %multiply.525, s32[] %get-dimension-size.526), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.528 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.515), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.529 = s32[] multiply(s32[] %multiply.527, s32[] %get-dimension-size.528), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.530 = f32[] convert(s32[] %multiply.529), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.531 = f32[32]{0} broadcast(f32[] %convert.530), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.532 = f32[32]{0} divide(f32[32]{0} %reduce.522, f32[32]{0} %broadcast.531), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.533 = f32[32]{0} convert(f32[32]{0} %divide.532), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1313,14 +1669,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.555 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.556 = f32[] convert(f32[] %constant.555), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.561 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554, f32[] %convert.556), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.557, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.562 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.563 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.564 = u32[] multiply(u32[] %get-dimension-size.562, u32[] %get-dimension-size.563), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.565 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.566 = u32[] multiply(u32[] %multiply.564, u32[] %get-dimension-size.565), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.567 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.568 = u32[] multiply(u32[] %multiply.566, u32[] %get-dimension-size.567), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.569 = f32[] convert(u32[] %multiply.568), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.562 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.563 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.564 = s32[] multiply(s32[] %get-dimension-size.562, s32[] %get-dimension-size.563), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.565 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.566 = s32[] multiply(s32[] %multiply.564, s32[] %get-dimension-size.565), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.567 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.554), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.568 = s32[] multiply(s32[] %multiply.566, s32[] %get-dimension-size.567), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.569 = f32[] convert(s32[] %multiply.568), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.570 = f32[32]{0} broadcast(f32[] %convert.569), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.571 = f32[32]{0} divide(f32[32]{0} %reduce.561, f32[32]{0} %broadcast.570), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.572 = f32[32]{0} convert(f32[32]{0} %divide.571), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -1333,14 +1689,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.579 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.580 = f32[] convert(f32[] %constant.579), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.585 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578, f32[] %convert.580), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.581, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.586 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.587 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.588 = u32[] multiply(u32[] %get-dimension-size.586, u32[] %get-dimension-size.587), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.589 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.590 = u32[] multiply(u32[] %multiply.588, u32[] %get-dimension-size.589), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.591 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.592 = u32[] multiply(u32[] %multiply.590, u32[] %get-dimension-size.591), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.593 = f32[] convert(u32[] %multiply.592), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.586 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.587 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.588 = s32[] multiply(s32[] %get-dimension-size.586, s32[] %get-dimension-size.587), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.589 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.590 = s32[] multiply(s32[] %multiply.588, s32[] %get-dimension-size.589), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.591 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.578), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.592 = s32[] multiply(s32[] %multiply.590, s32[] %get-dimension-size.591), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.593 = f32[] convert(s32[] %multiply.592), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.594 = f32[32]{0} broadcast(f32[] %convert.593), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.595 = f32[32]{0} divide(f32[32]{0} %reduce.585, f32[32]{0} %broadcast.594), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.596 = f32[32]{0} convert(f32[32]{0} %divide.595), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -1364,14 +1720,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.672 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.673 = f32[] convert(f32[] %constant.672), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.678 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671, f32[] %convert.673), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.674, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.679 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.680 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.681 = u32[] multiply(u32[] %get-dimension-size.679, u32[] %get-dimension-size.680), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.682 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.683 = u32[] multiply(u32[] %multiply.681, u32[] %get-dimension-size.682), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.684 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.685 = u32[] multiply(u32[] %multiply.683, u32[] %get-dimension-size.684), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.686 = f32[] convert(u32[] %multiply.685), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.679 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.680 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.681 = s32[] multiply(s32[] %get-dimension-size.679, s32[] %get-dimension-size.680), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.682 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.683 = s32[] multiply(s32[] %multiply.681, s32[] %get-dimension-size.682), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.684 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.671), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.685 = s32[] multiply(s32[] %multiply.683, s32[] %get-dimension-size.684), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.686 = f32[] convert(s32[] %multiply.685), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.687 = f32[128]{0} broadcast(f32[] %convert.686), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.688 = f32[128]{0} divide(f32[128]{0} %reduce.678, f32[128]{0} %broadcast.687), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.689 = f32[128]{0} convert(f32[128]{0} %divide.688), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1384,14 +1740,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.696 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.697 = f32[] convert(f32[] %constant.696), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.702 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695, f32[] %convert.697), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.698, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.703 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.704 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.705 = u32[] multiply(u32[] %get-dimension-size.703, u32[] %get-dimension-size.704), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.706 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.707 = u32[] multiply(u32[] %multiply.705, u32[] %get-dimension-size.706), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.708 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.709 = u32[] multiply(u32[] %multiply.707, u32[] %get-dimension-size.708), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.710 = f32[] convert(u32[] %multiply.709), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.703 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.704 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.705 = s32[] multiply(s32[] %get-dimension-size.703, s32[] %get-dimension-size.704), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.706 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.707 = s32[] multiply(s32[] %multiply.705, s32[] %get-dimension-size.706), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.708 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.695), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.709 = s32[] multiply(s32[] %multiply.707, s32[] %get-dimension-size.708), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.710 = f32[] convert(s32[] %multiply.709), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.711 = f32[128]{0} broadcast(f32[] %convert.710), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.712 = f32[128]{0} divide(f32[128]{0} %reduce.702, f32[128]{0} %broadcast.711), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.713 = f32[128]{0} convert(f32[128]{0} %divide.712), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1419,14 +1775,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.729 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.730 = f32[] convert(f32[] %constant.729), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.735 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728, f32[] %convert.730), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.731, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.736 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.737 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.738 = u32[] multiply(u32[] %get-dimension-size.736, u32[] %get-dimension-size.737), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.739 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.740 = u32[] multiply(u32[] %multiply.738, u32[] %get-dimension-size.739), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.741 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.742 = u32[] multiply(u32[] %multiply.740, u32[] %get-dimension-size.741), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.743 = f32[] convert(u32[] %multiply.742), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.736 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.737 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.738 = s32[] multiply(s32[] %get-dimension-size.736, s32[] %get-dimension-size.737), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.739 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.740 = s32[] multiply(s32[] %multiply.738, s32[] %get-dimension-size.739), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.741 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.728), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.742 = s32[] multiply(s32[] %multiply.740, s32[] %get-dimension-size.741), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.743 = f32[] convert(s32[] %multiply.742), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.744 = f32[128]{0} broadcast(f32[] %convert.743), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.745 = f32[128]{0} divide(f32[128]{0} %reduce.735, f32[128]{0} %broadcast.744), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.746 = f32[128]{0} convert(f32[128]{0} %divide.745), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1439,14 +1795,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.753 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.754 = f32[] convert(f32[] %constant.753), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.759 = f32[128]{0} reduce(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752, f32[] %convert.754), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.755, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.760 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.761 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.762 = u32[] multiply(u32[] %get-dimension-size.760, u32[] %get-dimension-size.761), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.763 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.764 = u32[] multiply(u32[] %multiply.762, u32[] %get-dimension-size.763), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.765 = u32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.766 = u32[] multiply(u32[] %multiply.764, u32[] %get-dimension-size.765), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.767 = f32[] convert(u32[] %multiply.766), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.760 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.761 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.762 = s32[] multiply(s32[] %get-dimension-size.760, s32[] %get-dimension-size.761), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.763 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.764 = s32[] multiply(s32[] %multiply.762, s32[] %get-dimension-size.763), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.765 = s32[] get-dimension-size(f32[1,16,28,28,128]{4,3,2,1,0} %convert.752), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.766 = s32[] multiply(s32[] %multiply.764, s32[] %get-dimension-size.765), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.767 = f32[] convert(s32[] %multiply.766), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.768 = f32[128]{0} broadcast(f32[] %convert.767), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.769 = f32[128]{0} divide(f32[128]{0} %reduce.759, f32[128]{0} %broadcast.768), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.770 = f32[128]{0} convert(f32[128]{0} %divide.769), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1469,14 +1825,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.789 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.790 = f32[] convert(f32[] %constant.789), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.795 = f32[192]{0} reduce(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788, f32[] %convert.790), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.791, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.796 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.797 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.798 = u32[] multiply(u32[] %get-dimension-size.796, u32[] %get-dimension-size.797), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.799 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.800 = u32[] multiply(u32[] %multiply.798, u32[] %get-dimension-size.799), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.801 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.802 = u32[] multiply(u32[] %multiply.800, u32[] %get-dimension-size.801), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.803 = f32[] convert(u32[] %multiply.802), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.796 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.797 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.798 = s32[] multiply(s32[] %get-dimension-size.796, s32[] %get-dimension-size.797), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.799 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.800 = s32[] multiply(s32[] %multiply.798, s32[] %get-dimension-size.799), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.801 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.788), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.802 = s32[] multiply(s32[] %multiply.800, s32[] %get-dimension-size.801), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.803 = f32[] convert(s32[] %multiply.802), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.804 = f32[192]{0} broadcast(f32[] %convert.803), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.805 = f32[192]{0} divide(f32[192]{0} %reduce.795, f32[192]{0} %broadcast.804), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.806 = f32[192]{0} convert(f32[192]{0} %divide.805), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1489,14 +1845,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.813 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.814 = f32[] convert(f32[] %constant.813), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.819 = f32[192]{0} reduce(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812, f32[] %convert.814), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.815, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.820 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.821 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.822 = u32[] multiply(u32[] %get-dimension-size.820, u32[] %get-dimension-size.821), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.823 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.824 = u32[] multiply(u32[] %multiply.822, u32[] %get-dimension-size.823), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.825 = u32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.826 = u32[] multiply(u32[] %multiply.824, u32[] %get-dimension-size.825), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.827 = f32[] convert(u32[] %multiply.826), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.820 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.821 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.822 = s32[] multiply(s32[] %get-dimension-size.820, s32[] %get-dimension-size.821), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.823 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.824 = s32[] multiply(s32[] %multiply.822, s32[] %get-dimension-size.823), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.825 = s32[] get-dimension-size(f32[1,16,28,28,192]{4,3,2,1,0} %convert.812), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.826 = s32[] multiply(s32[] %multiply.824, s32[] %get-dimension-size.825), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.827 = f32[] convert(s32[] %multiply.826), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.828 = f32[192]{0} broadcast(f32[] %convert.827), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.829 = f32[192]{0} divide(f32[192]{0} %reduce.819, f32[192]{0} %broadcast.828), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.830 = f32[192]{0} convert(f32[192]{0} %divide.829), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1524,14 +1880,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.846 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.847 = f32[] convert(f32[] %constant.846), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.852 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845, f32[] %convert.847), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.848, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.853 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.854 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.855 = u32[] multiply(u32[] %get-dimension-size.853, u32[] %get-dimension-size.854), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.856 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.857 = u32[] multiply(u32[] %multiply.855, u32[] %get-dimension-size.856), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.858 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.859 = u32[] multiply(u32[] %multiply.857, u32[] %get-dimension-size.858), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.860 = f32[] convert(u32[] %multiply.859), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.853 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.854 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.855 = s32[] multiply(s32[] %get-dimension-size.853, s32[] %get-dimension-size.854), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.856 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.857 = s32[] multiply(s32[] %multiply.855, s32[] %get-dimension-size.856), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.858 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.845), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.859 = s32[] multiply(s32[] %multiply.857, s32[] %get-dimension-size.858), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.860 = f32[] convert(s32[] %multiply.859), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.861 = f32[32]{0} broadcast(f32[] %convert.860), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.862 = f32[32]{0} divide(f32[32]{0} %reduce.852, f32[32]{0} %broadcast.861), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.863 = f32[32]{0} convert(f32[32]{0} %divide.862), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1544,14 +1900,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.870 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.871 = f32[] convert(f32[] %constant.870), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.876 = f32[32]{0} reduce(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869, f32[] %convert.871), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.872, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.877 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.878 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.879 = u32[] multiply(u32[] %get-dimension-size.877, u32[] %get-dimension-size.878), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.880 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.881 = u32[] multiply(u32[] %multiply.879, u32[] %get-dimension-size.880), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.882 = u32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.883 = u32[] multiply(u32[] %multiply.881, u32[] %get-dimension-size.882), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.884 = f32[] convert(u32[] %multiply.883), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.877 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.878 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.879 = s32[] multiply(s32[] %get-dimension-size.877, s32[] %get-dimension-size.878), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.880 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.881 = s32[] multiply(s32[] %multiply.879, s32[] %get-dimension-size.880), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.882 = s32[] get-dimension-size(f32[1,16,28,28,32]{4,3,2,1,0} %convert.869), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.883 = s32[] multiply(s32[] %multiply.881, s32[] %get-dimension-size.882), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.884 = f32[] convert(s32[] %multiply.883), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.885 = f32[32]{0} broadcast(f32[] %convert.884), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.886 = f32[32]{0} divide(f32[32]{0} %reduce.876, f32[32]{0} %broadcast.885), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.887 = f32[32]{0} convert(f32[32]{0} %divide.886), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1574,14 +1930,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.906 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.907 = f32[] convert(f32[] %constant.906), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.912 = f32[96]{0} reduce(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905, f32[] %convert.907), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.908, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.913 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.914 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.915 = u32[] multiply(u32[] %get-dimension-size.913, u32[] %get-dimension-size.914), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.916 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.917 = u32[] multiply(u32[] %multiply.915, u32[] %get-dimension-size.916), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.918 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.919 = u32[] multiply(u32[] %multiply.917, u32[] %get-dimension-size.918), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.920 = f32[] convert(u32[] %multiply.919), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.913 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.914 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.915 = s32[] multiply(s32[] %get-dimension-size.913, s32[] %get-dimension-size.914), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.916 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.917 = s32[] multiply(s32[] %multiply.915, s32[] %get-dimension-size.916), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.918 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.905), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.919 = s32[] multiply(s32[] %multiply.917, s32[] %get-dimension-size.918), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.920 = f32[] convert(s32[] %multiply.919), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.921 = f32[96]{0} broadcast(f32[] %convert.920), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.922 = f32[96]{0} divide(f32[96]{0} %reduce.912, f32[96]{0} %broadcast.921), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.923 = f32[96]{0} convert(f32[96]{0} %divide.922), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1594,14 +1950,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.930 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.931 = f32[] convert(f32[] %constant.930), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.936 = f32[96]{0} reduce(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929, f32[] %convert.931), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.932, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.937 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.938 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.939 = u32[] multiply(u32[] %get-dimension-size.937, u32[] %get-dimension-size.938), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.940 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.941 = u32[] multiply(u32[] %multiply.939, u32[] %get-dimension-size.940), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.942 = u32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.943 = u32[] multiply(u32[] %multiply.941, u32[] %get-dimension-size.942), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.944 = f32[] convert(u32[] %multiply.943), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.937 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.938 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.939 = s32[] multiply(s32[] %get-dimension-size.937, s32[] %get-dimension-size.938), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.940 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.941 = s32[] multiply(s32[] %multiply.939, s32[] %get-dimension-size.940), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.942 = s32[] get-dimension-size(f32[1,16,28,28,96]{4,3,2,1,0} %convert.929), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.943 = s32[] multiply(s32[] %multiply.941, s32[] %get-dimension-size.942), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.944 = f32[] convert(s32[] %multiply.943), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.945 = f32[96]{0} broadcast(f32[] %convert.944), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.946 = f32[96]{0} divide(f32[96]{0} %reduce.936, f32[96]{0} %broadcast.945), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.947 = f32[96]{0} convert(f32[96]{0} %divide.946), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1627,14 +1983,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.969 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.970 = f32[] convert(f32[] %constant.969), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.975 = f32[64]{0} reduce(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968, f32[] %convert.970), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.971, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.976 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.977 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.978 = u32[] multiply(u32[] %get-dimension-size.976, u32[] %get-dimension-size.977), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.979 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.980 = u32[] multiply(u32[] %multiply.978, u32[] %get-dimension-size.979), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.981 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.982 = u32[] multiply(u32[] %multiply.980, u32[] %get-dimension-size.981), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.983 = f32[] convert(u32[] %multiply.982), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.976 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.977 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.978 = s32[] multiply(s32[] %get-dimension-size.976, s32[] %get-dimension-size.977), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.979 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.980 = s32[] multiply(s32[] %multiply.978, s32[] %get-dimension-size.979), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.981 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.968), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.982 = s32[] multiply(s32[] %multiply.980, s32[] %get-dimension-size.981), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.983 = f32[] convert(s32[] %multiply.982), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.984 = f32[64]{0} broadcast(f32[] %convert.983), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.985 = f32[64]{0} divide(f32[64]{0} %reduce.975, f32[64]{0} %broadcast.984), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.986 = f32[64]{0} convert(f32[64]{0} %divide.985), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -1647,14 +2003,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.993 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.994 = f32[] convert(f32[] %constant.993), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.999 = f32[64]{0} reduce(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992, f32[] %convert.994), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.995, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1000 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1001 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1002 = u32[] multiply(u32[] %get-dimension-size.1000, u32[] %get-dimension-size.1001), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1003 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1004 = u32[] multiply(u32[] %multiply.1002, u32[] %get-dimension-size.1003), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1005 = u32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1006 = u32[] multiply(u32[] %multiply.1004, u32[] %get-dimension-size.1005), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1007 = f32[] convert(u32[] %multiply.1006), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1000 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1001 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1002 = s32[] multiply(s32[] %get-dimension-size.1000, s32[] %get-dimension-size.1001), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1003 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1004 = s32[] multiply(s32[] %multiply.1002, s32[] %get-dimension-size.1003), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1005 = s32[] get-dimension-size(f32[1,16,28,28,64]{4,3,2,1,0} %convert.992), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1006 = s32[] multiply(s32[] %multiply.1004, s32[] %get-dimension-size.1005), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1007 = f32[] convert(s32[] %multiply.1006), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1008 = f32[64]{0} broadcast(f32[] %convert.1007), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.1009 = f32[64]{0} divide(f32[64]{0} %reduce.999, f32[64]{0} %broadcast.1008), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.1010 = f32[64]{0} convert(f32[64]{0} %divide.1009), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -1680,14 +2036,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1036 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1037 = f32[] convert(f32[] %constant.1036), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1042 = f32[192]{0} reduce(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035, f32[] %convert.1037), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1038, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1043 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1044 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1045 = u32[] multiply(u32[] %get-dimension-size.1043, u32[] %get-dimension-size.1044), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1046 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1047 = u32[] multiply(u32[] %multiply.1045, u32[] %get-dimension-size.1046), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1048 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1049 = u32[] multiply(u32[] %multiply.1047, u32[] %get-dimension-size.1048), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1050 = f32[] convert(u32[] %multiply.1049), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1043 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1044 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1045 = s32[] multiply(s32[] %get-dimension-size.1043, s32[] %get-dimension-size.1044), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1046 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1047 = s32[] multiply(s32[] %multiply.1045, s32[] %get-dimension-size.1046), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1048 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1035), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1049 = s32[] multiply(s32[] %multiply.1047, s32[] %get-dimension-size.1048), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1050 = f32[] convert(s32[] %multiply.1049), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1051 = f32[192]{0} broadcast(f32[] %convert.1050), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1052 = f32[192]{0} divide(f32[192]{0} %reduce.1042, f32[192]{0} %broadcast.1051), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1053 = f32[192]{0} convert(f32[192]{0} %divide.1052), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1700,14 +2056,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1060 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1061 = f32[] convert(f32[] %constant.1060), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1066 = f32[192]{0} reduce(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059, f32[] %convert.1061), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1062, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1067 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1068 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1069 = u32[] multiply(u32[] %get-dimension-size.1067, u32[] %get-dimension-size.1068), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1070 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1071 = u32[] multiply(u32[] %multiply.1069, u32[] %get-dimension-size.1070), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1072 = u32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1073 = u32[] multiply(u32[] %multiply.1071, u32[] %get-dimension-size.1072), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1074 = f32[] convert(u32[] %multiply.1073), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1067 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1068 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1069 = s32[] multiply(s32[] %get-dimension-size.1067, s32[] %get-dimension-size.1068), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1070 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1071 = s32[] multiply(s32[] %multiply.1069, s32[] %get-dimension-size.1070), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1072 = s32[] get-dimension-size(f32[1,8,14,14,192]{4,3,2,1,0} %convert.1059), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1073 = s32[] multiply(s32[] %multiply.1071, s32[] %get-dimension-size.1072), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1074 = f32[] convert(s32[] %multiply.1073), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1075 = f32[192]{0} broadcast(f32[] %convert.1074), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1076 = f32[192]{0} divide(f32[192]{0} %reduce.1066, f32[192]{0} %broadcast.1075), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1077 = f32[192]{0} convert(f32[192]{0} %divide.1076), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1735,14 +2091,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1093 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1094 = f32[] convert(f32[] %constant.1093), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1099 = f32[96]{0} reduce(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092, f32[] %convert.1094), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1095, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1100 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1101 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1102 = u32[] multiply(u32[] %get-dimension-size.1100, u32[] %get-dimension-size.1101), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1103 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1104 = u32[] multiply(u32[] %multiply.1102, u32[] %get-dimension-size.1103), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1105 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1106 = u32[] multiply(u32[] %multiply.1104, u32[] %get-dimension-size.1105), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1107 = f32[] convert(u32[] %multiply.1106), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1100 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1101 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1102 = s32[] multiply(s32[] %get-dimension-size.1100, s32[] %get-dimension-size.1101), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1103 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1104 = s32[] multiply(s32[] %multiply.1102, s32[] %get-dimension-size.1103), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1105 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1092), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1106 = s32[] multiply(s32[] %multiply.1104, s32[] %get-dimension-size.1105), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1107 = f32[] convert(s32[] %multiply.1106), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1108 = f32[96]{0} broadcast(f32[] %convert.1107), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1109 = f32[96]{0} divide(f32[96]{0} %reduce.1099, f32[96]{0} %broadcast.1108), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1110 = f32[96]{0} convert(f32[96]{0} %divide.1109), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1755,14 +2111,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1117 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1118 = f32[] convert(f32[] %constant.1117), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1123 = f32[96]{0} reduce(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116, f32[] %convert.1118), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1119, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1124 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1125 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1126 = u32[] multiply(u32[] %get-dimension-size.1124, u32[] %get-dimension-size.1125), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1127 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1128 = u32[] multiply(u32[] %multiply.1126, u32[] %get-dimension-size.1127), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1129 = u32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1130 = u32[] multiply(u32[] %multiply.1128, u32[] %get-dimension-size.1129), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1131 = f32[] convert(u32[] %multiply.1130), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1124 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1125 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1126 = s32[] multiply(s32[] %get-dimension-size.1124, s32[] %get-dimension-size.1125), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1127 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1128 = s32[] multiply(s32[] %multiply.1126, s32[] %get-dimension-size.1127), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1129 = s32[] get-dimension-size(f32[1,8,14,14,96]{4,3,2,1,0} %convert.1116), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1130 = s32[] multiply(s32[] %multiply.1128, s32[] %get-dimension-size.1129), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1131 = f32[] convert(s32[] %multiply.1130), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1132 = f32[96]{0} broadcast(f32[] %convert.1131), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1133 = f32[96]{0} divide(f32[96]{0} %reduce.1123, f32[96]{0} %broadcast.1132), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1134 = f32[96]{0} convert(f32[96]{0} %divide.1133), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1785,14 +2141,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1153 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1154 = f32[] convert(f32[] %constant.1153), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1159 = f32[208]{0} reduce(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152, f32[] %convert.1154), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1155, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1160 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1161 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1162 = u32[] multiply(u32[] %get-dimension-size.1160, u32[] %get-dimension-size.1161), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1163 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1164 = u32[] multiply(u32[] %multiply.1162, u32[] %get-dimension-size.1163), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1165 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1166 = u32[] multiply(u32[] %multiply.1164, u32[] %get-dimension-size.1165), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.1167 = f32[] convert(u32[] %multiply.1166), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1160 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1161 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1162 = s32[] multiply(s32[] %get-dimension-size.1160, s32[] %get-dimension-size.1161), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1163 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1164 = s32[] multiply(s32[] %multiply.1162, s32[] %get-dimension-size.1163), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1165 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1152), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1166 = s32[] multiply(s32[] %multiply.1164, s32[] %get-dimension-size.1165), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.1167 = f32[] convert(s32[] %multiply.1166), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.1168 = f32[208]{0} broadcast(f32[] %convert.1167), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.1169 = f32[208]{0} divide(f32[208]{0} %reduce.1159, f32[208]{0} %broadcast.1168), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1170 = f32[208]{0} convert(f32[208]{0} %divide.1169), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1805,14 +2161,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1177 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1178 = f32[] convert(f32[] %constant.1177), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.1183 = f32[208]{0} reduce(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176, f32[] %convert.1178), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.1179, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1184 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1185 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1186 = u32[] multiply(u32[] %get-dimension-size.1184, u32[] %get-dimension-size.1185), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1187 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1188 = u32[] multiply(u32[] %multiply.1186, u32[] %get-dimension-size.1187), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1189 = u32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1190 = u32[] multiply(u32[] %multiply.1188, u32[] %get-dimension-size.1189), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.1191 = f32[] convert(u32[] %multiply.1190), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1184 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1185 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1186 = s32[] multiply(s32[] %get-dimension-size.1184, s32[] %get-dimension-size.1185), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1187 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1188 = s32[] multiply(s32[] %multiply.1186, s32[] %get-dimension-size.1187), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1189 = s32[] get-dimension-size(f32[1,8,14,14,208]{4,3,2,1,0} %convert.1176), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1190 = s32[] multiply(s32[] %multiply.1188, s32[] %get-dimension-size.1189), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.1191 = f32[] convert(s32[] %multiply.1190), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.1192 = f32[208]{0} broadcast(f32[] %convert.1191), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.1193 = f32[208]{0} divide(f32[208]{0} %reduce.1183, f32[208]{0} %broadcast.1192), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1194 = f32[208]{0} convert(f32[208]{0} %divide.1193), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1840,14 +2196,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1210 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1211 = f32[] convert(f32[] %constant.1210), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1216 = f32[16]{0} reduce(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209, f32[] %convert.1211), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1212, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1217 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1218 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1219 = u32[] multiply(u32[] %get-dimension-size.1217, u32[] %get-dimension-size.1218), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1220 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1221 = u32[] multiply(u32[] %multiply.1219, u32[] %get-dimension-size.1220), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1222 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1223 = u32[] multiply(u32[] %multiply.1221, u32[] %get-dimension-size.1222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1224 = f32[] convert(u32[] %multiply.1223), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1217 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1218 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1219 = s32[] multiply(s32[] %get-dimension-size.1217, s32[] %get-dimension-size.1218), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1220 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1221 = s32[] multiply(s32[] %multiply.1219, s32[] %get-dimension-size.1220), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1222 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1209), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1223 = s32[] multiply(s32[] %multiply.1221, s32[] %get-dimension-size.1222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1224 = f32[] convert(s32[] %multiply.1223), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1225 = f32[16]{0} broadcast(f32[] %convert.1224), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1226 = f32[16]{0} divide(f32[16]{0} %reduce.1216, f32[16]{0} %broadcast.1225), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1227 = f32[16]{0} convert(f32[16]{0} %divide.1226), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -1860,14 +2216,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1234 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1235 = f32[] convert(f32[] %constant.1234), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1240 = f32[16]{0} reduce(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233, f32[] %convert.1235), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1236, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1241 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1242 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1243 = u32[] multiply(u32[] %get-dimension-size.1241, u32[] %get-dimension-size.1242), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1244 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1245 = u32[] multiply(u32[] %multiply.1243, u32[] %get-dimension-size.1244), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1246 = u32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1247 = u32[] multiply(u32[] %multiply.1245, u32[] %get-dimension-size.1246), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1248 = f32[] convert(u32[] %multiply.1247), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1241 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1242 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1243 = s32[] multiply(s32[] %get-dimension-size.1241, s32[] %get-dimension-size.1242), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1244 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1245 = s32[] multiply(s32[] %multiply.1243, s32[] %get-dimension-size.1244), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1246 = s32[] get-dimension-size(f32[1,8,14,14,16]{4,3,2,1,0} %convert.1233), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1247 = s32[] multiply(s32[] %multiply.1245, s32[] %get-dimension-size.1246), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1248 = f32[] convert(s32[] %multiply.1247), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1249 = f32[16]{0} broadcast(f32[] %convert.1248), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1250 = f32[16]{0} divide(f32[16]{0} %reduce.1240, f32[16]{0} %broadcast.1249), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1251 = f32[16]{0} convert(f32[16]{0} %divide.1250), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -1890,14 +2246,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1270 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1271 = f32[] convert(f32[] %constant.1270), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1276 = f32[48]{0} reduce(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269, f32[] %convert.1271), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1272, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1277 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1278 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1279 = u32[] multiply(u32[] %get-dimension-size.1277, u32[] %get-dimension-size.1278), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1280 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1281 = u32[] multiply(u32[] %multiply.1279, u32[] %get-dimension-size.1280), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1282 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1283 = u32[] multiply(u32[] %multiply.1281, u32[] %get-dimension-size.1282), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.1284 = f32[] convert(u32[] %multiply.1283), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1277 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1278 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1279 = s32[] multiply(s32[] %get-dimension-size.1277, s32[] %get-dimension-size.1278), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1280 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1281 = s32[] multiply(s32[] %multiply.1279, s32[] %get-dimension-size.1280), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1282 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1269), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1283 = s32[] multiply(s32[] %multiply.1281, s32[] %get-dimension-size.1282), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.1284 = f32[] convert(s32[] %multiply.1283), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.1285 = f32[48]{0} broadcast(f32[] %convert.1284), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.1286 = f32[48]{0} divide(f32[48]{0} %reduce.1276, f32[48]{0} %broadcast.1285), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1287 = f32[48]{0} convert(f32[48]{0} %divide.1286), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -1910,14 +2266,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1294 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1295 = f32[] convert(f32[] %constant.1294), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.1300 = f32[48]{0} reduce(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293, f32[] %convert.1295), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.1296, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1301 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1302 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1303 = u32[] multiply(u32[] %get-dimension-size.1301, u32[] %get-dimension-size.1302), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1304 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1305 = u32[] multiply(u32[] %multiply.1303, u32[] %get-dimension-size.1304), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1306 = u32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1307 = u32[] multiply(u32[] %multiply.1305, u32[] %get-dimension-size.1306), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.1308 = f32[] convert(u32[] %multiply.1307), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1301 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1302 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1303 = s32[] multiply(s32[] %get-dimension-size.1301, s32[] %get-dimension-size.1302), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1304 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1305 = s32[] multiply(s32[] %multiply.1303, s32[] %get-dimension-size.1304), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1306 = s32[] get-dimension-size(f32[1,8,14,14,48]{4,3,2,1,0} %convert.1293), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1307 = s32[] multiply(s32[] %multiply.1305, s32[] %get-dimension-size.1306), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.1308 = f32[] convert(s32[] %multiply.1307), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.1309 = f32[48]{0} broadcast(f32[] %convert.1308), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.1310 = f32[48]{0} divide(f32[48]{0} %reduce.1300, f32[48]{0} %broadcast.1309), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1311 = f32[48]{0} convert(f32[48]{0} %divide.1310), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -1943,14 +2299,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1333 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.1334 = f32[] convert(f32[] %constant.1333), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1339 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332, f32[] %convert.1334), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.1335, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1340 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1341 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1342 = u32[] multiply(u32[] %get-dimension-size.1340, u32[] %get-dimension-size.1341), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1343 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1344 = u32[] multiply(u32[] %multiply.1342, u32[] %get-dimension-size.1343), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1345 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1346 = u32[] multiply(u32[] %multiply.1344, u32[] %get-dimension-size.1345), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1347 = f32[] convert(u32[] %multiply.1346), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1340 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1341 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1342 = s32[] multiply(s32[] %get-dimension-size.1340, s32[] %get-dimension-size.1341), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1343 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1344 = s32[] multiply(s32[] %multiply.1342, s32[] %get-dimension-size.1343), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1345 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1332), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1346 = s32[] multiply(s32[] %multiply.1344, s32[] %get-dimension-size.1345), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1347 = f32[] convert(s32[] %multiply.1346), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1348 = f32[64]{0} broadcast(f32[] %convert.1347), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.1349 = f32[64]{0} divide(f32[64]{0} %reduce.1339, f32[64]{0} %broadcast.1348), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.1350 = f32[64]{0} convert(f32[64]{0} %divide.1349), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -1963,14 +2319,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1357 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.1358 = f32[] convert(f32[] %constant.1357), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1363 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356, f32[] %convert.1358), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.1359, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1364 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1365 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1366 = u32[] multiply(u32[] %get-dimension-size.1364, u32[] %get-dimension-size.1365), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1367 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1368 = u32[] multiply(u32[] %multiply.1366, u32[] %get-dimension-size.1367), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1369 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1370 = u32[] multiply(u32[] %multiply.1368, u32[] %get-dimension-size.1369), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1371 = f32[] convert(u32[] %multiply.1370), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1364 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1365 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1366 = s32[] multiply(s32[] %get-dimension-size.1364, s32[] %get-dimension-size.1365), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1367 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1368 = s32[] multiply(s32[] %multiply.1366, s32[] %get-dimension-size.1367), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1369 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1356), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1370 = s32[] multiply(s32[] %multiply.1368, s32[] %get-dimension-size.1369), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1371 = f32[] convert(s32[] %multiply.1370), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1372 = f32[64]{0} broadcast(f32[] %convert.1371), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.1373 = f32[64]{0} divide(f32[64]{0} %reduce.1363, f32[64]{0} %broadcast.1372), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.1374 = f32[64]{0} convert(f32[64]{0} %divide.1373), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -1994,14 +2350,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1394 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1395 = f32[] convert(f32[] %constant.1394), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1400 = f32[160]{0} reduce(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393, f32[] %convert.1395), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1396, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1401 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1402 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1403 = u32[] multiply(u32[] %get-dimension-size.1401, u32[] %get-dimension-size.1402), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1404 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1405 = u32[] multiply(u32[] %multiply.1403, u32[] %get-dimension-size.1404), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1406 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1407 = u32[] multiply(u32[] %multiply.1405, u32[] %get-dimension-size.1406), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1408 = f32[] convert(u32[] %multiply.1407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1401 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1402 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1403 = s32[] multiply(s32[] %get-dimension-size.1401, s32[] %get-dimension-size.1402), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1404 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1405 = s32[] multiply(s32[] %multiply.1403, s32[] %get-dimension-size.1404), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1406 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1393), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1407 = s32[] multiply(s32[] %multiply.1405, s32[] %get-dimension-size.1406), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1408 = f32[] convert(s32[] %multiply.1407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1409 = f32[160]{0} broadcast(f32[] %convert.1408), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1410 = f32[160]{0} divide(f32[160]{0} %reduce.1400, f32[160]{0} %broadcast.1409), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1411 = f32[160]{0} convert(f32[160]{0} %divide.1410), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2014,14 +2370,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1418 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1419 = f32[] convert(f32[] %constant.1418), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1424 = f32[160]{0} reduce(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417, f32[] %convert.1419), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1420, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1425 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1426 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1427 = u32[] multiply(u32[] %get-dimension-size.1425, u32[] %get-dimension-size.1426), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1428 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1429 = u32[] multiply(u32[] %multiply.1427, u32[] %get-dimension-size.1428), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1430 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1431 = u32[] multiply(u32[] %multiply.1429, u32[] %get-dimension-size.1430), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1432 = f32[] convert(u32[] %multiply.1431), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1425 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1426 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1427 = s32[] multiply(s32[] %get-dimension-size.1425, s32[] %get-dimension-size.1426), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1428 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1429 = s32[] multiply(s32[] %multiply.1427, s32[] %get-dimension-size.1428), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1430 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.1417), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1431 = s32[] multiply(s32[] %multiply.1429, s32[] %get-dimension-size.1430), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1432 = f32[] convert(s32[] %multiply.1431), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1433 = f32[160]{0} broadcast(f32[] %convert.1432), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1434 = f32[160]{0} divide(f32[160]{0} %reduce.1424, f32[160]{0} %broadcast.1433), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1435 = f32[160]{0} convert(f32[160]{0} %divide.1434), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2049,14 +2405,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1451 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1452 = f32[] convert(f32[] %constant.1451), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1457 = f32[112]{0} reduce(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450, f32[] %convert.1452), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1453, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1458 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1459 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1460 = u32[] multiply(u32[] %get-dimension-size.1458, u32[] %get-dimension-size.1459), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1461 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1462 = u32[] multiply(u32[] %multiply.1460, u32[] %get-dimension-size.1461), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1463 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1464 = u32[] multiply(u32[] %multiply.1462, u32[] %get-dimension-size.1463), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1465 = f32[] convert(u32[] %multiply.1464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1458 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1459 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1460 = s32[] multiply(s32[] %get-dimension-size.1458, s32[] %get-dimension-size.1459), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1461 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1462 = s32[] multiply(s32[] %multiply.1460, s32[] %get-dimension-size.1461), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1463 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1450), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1464 = s32[] multiply(s32[] %multiply.1462, s32[] %get-dimension-size.1463), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1465 = f32[] convert(s32[] %multiply.1464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1466 = f32[112]{0} broadcast(f32[] %convert.1465), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1467 = f32[112]{0} divide(f32[112]{0} %reduce.1457, f32[112]{0} %broadcast.1466), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1468 = f32[112]{0} convert(f32[112]{0} %divide.1467), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2069,14 +2425,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1475 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1476 = f32[] convert(f32[] %constant.1475), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1481 = f32[112]{0} reduce(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474, f32[] %convert.1476), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1477, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1482 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1483 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1484 = u32[] multiply(u32[] %get-dimension-size.1482, u32[] %get-dimension-size.1483), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1485 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1486 = u32[] multiply(u32[] %multiply.1484, u32[] %get-dimension-size.1485), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1487 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1488 = u32[] multiply(u32[] %multiply.1486, u32[] %get-dimension-size.1487), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1489 = f32[] convert(u32[] %multiply.1488), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1482 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1483 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1484 = s32[] multiply(s32[] %get-dimension-size.1482, s32[] %get-dimension-size.1483), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1485 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1486 = s32[] multiply(s32[] %multiply.1484, s32[] %get-dimension-size.1485), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1487 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.1474), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1488 = s32[] multiply(s32[] %multiply.1486, s32[] %get-dimension-size.1487), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1489 = f32[] convert(s32[] %multiply.1488), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1490 = f32[112]{0} broadcast(f32[] %convert.1489), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1491 = f32[112]{0} divide(f32[112]{0} %reduce.1481, f32[112]{0} %broadcast.1490), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1492 = f32[112]{0} convert(f32[112]{0} %divide.1491), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2099,14 +2455,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1511 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1512 = f32[] convert(f32[] %constant.1511), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1517 = f32[224]{0} reduce(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510, f32[] %convert.1512), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1513, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1518 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1519 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1520 = u32[] multiply(u32[] %get-dimension-size.1518, u32[] %get-dimension-size.1519), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1521 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1522 = u32[] multiply(u32[] %multiply.1520, u32[] %get-dimension-size.1521), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1523 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1524 = u32[] multiply(u32[] %multiply.1522, u32[] %get-dimension-size.1523), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.1525 = f32[] convert(u32[] %multiply.1524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1518 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1519 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1520 = s32[] multiply(s32[] %get-dimension-size.1518, s32[] %get-dimension-size.1519), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1521 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1522 = s32[] multiply(s32[] %multiply.1520, s32[] %get-dimension-size.1521), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1523 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1510), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1524 = s32[] multiply(s32[] %multiply.1522, s32[] %get-dimension-size.1523), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.1525 = f32[] convert(s32[] %multiply.1524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.1526 = f32[224]{0} broadcast(f32[] %convert.1525), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.1527 = f32[224]{0} divide(f32[224]{0} %reduce.1517, f32[224]{0} %broadcast.1526), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1528 = f32[224]{0} convert(f32[224]{0} %divide.1527), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2119,14 +2475,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1535 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1536 = f32[] convert(f32[] %constant.1535), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.1541 = f32[224]{0} reduce(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534, f32[] %convert.1536), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.1537, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1542 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1543 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1544 = u32[] multiply(u32[] %get-dimension-size.1542, u32[] %get-dimension-size.1543), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1545 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1546 = u32[] multiply(u32[] %multiply.1544, u32[] %get-dimension-size.1545), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1547 = u32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1548 = u32[] multiply(u32[] %multiply.1546, u32[] %get-dimension-size.1547), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.1549 = f32[] convert(u32[] %multiply.1548), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1542 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1543 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1544 = s32[] multiply(s32[] %get-dimension-size.1542, s32[] %get-dimension-size.1543), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1545 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1546 = s32[] multiply(s32[] %multiply.1544, s32[] %get-dimension-size.1545), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1547 = s32[] get-dimension-size(f32[1,8,14,14,224]{4,3,2,1,0} %convert.1534), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1548 = s32[] multiply(s32[] %multiply.1546, s32[] %get-dimension-size.1547), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.1549 = f32[] convert(s32[] %multiply.1548), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.1550 = f32[224]{0} broadcast(f32[] %convert.1549), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.1551 = f32[224]{0} divide(f32[224]{0} %reduce.1541, f32[224]{0} %broadcast.1550), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1552 = f32[224]{0} convert(f32[224]{0} %divide.1551), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2154,14 +2510,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1568 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1569 = f32[] convert(f32[] %constant.1568), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1574 = f32[24]{0} reduce(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567, f32[] %convert.1569), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1570, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1575 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1576 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1577 = u32[] multiply(u32[] %get-dimension-size.1575, u32[] %get-dimension-size.1576), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1578 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1579 = u32[] multiply(u32[] %multiply.1577, u32[] %get-dimension-size.1578), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1580 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1581 = u32[] multiply(u32[] %multiply.1579, u32[] %get-dimension-size.1580), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1582 = f32[] convert(u32[] %multiply.1581), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1575 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1576 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1577 = s32[] multiply(s32[] %get-dimension-size.1575, s32[] %get-dimension-size.1576), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1578 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1579 = s32[] multiply(s32[] %multiply.1577, s32[] %get-dimension-size.1578), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1580 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1567), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1581 = s32[] multiply(s32[] %multiply.1579, s32[] %get-dimension-size.1580), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1582 = f32[] convert(s32[] %multiply.1581), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1583 = f32[24]{0} broadcast(f32[] %convert.1582), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1584 = f32[24]{0} divide(f32[24]{0} %reduce.1574, f32[24]{0} %broadcast.1583), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1585 = f32[24]{0} convert(f32[24]{0} %divide.1584), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2174,14 +2530,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1592 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1593 = f32[] convert(f32[] %constant.1592), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1598 = f32[24]{0} reduce(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591, f32[] %convert.1593), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1594, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1599 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1600 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1601 = u32[] multiply(u32[] %get-dimension-size.1599, u32[] %get-dimension-size.1600), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1602 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1603 = u32[] multiply(u32[] %multiply.1601, u32[] %get-dimension-size.1602), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1604 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1605 = u32[] multiply(u32[] %multiply.1603, u32[] %get-dimension-size.1604), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1606 = f32[] convert(u32[] %multiply.1605), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1599 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1600 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1601 = s32[] multiply(s32[] %get-dimension-size.1599, s32[] %get-dimension-size.1600), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1602 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1603 = s32[] multiply(s32[] %multiply.1601, s32[] %get-dimension-size.1602), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1604 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1591), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1605 = s32[] multiply(s32[] %multiply.1603, s32[] %get-dimension-size.1604), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1606 = f32[] convert(s32[] %multiply.1605), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1607 = f32[24]{0} broadcast(f32[] %convert.1606), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1608 = f32[24]{0} divide(f32[24]{0} %reduce.1598, f32[24]{0} %broadcast.1607), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1609 = f32[24]{0} convert(f32[24]{0} %divide.1608), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2204,14 +2560,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1628 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1629 = f32[] convert(f32[] %constant.1628), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1634 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627, f32[] %convert.1629), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1630, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1635 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1636 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1637 = u32[] multiply(u32[] %get-dimension-size.1635, u32[] %get-dimension-size.1636), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1638 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1639 = u32[] multiply(u32[] %multiply.1637, u32[] %get-dimension-size.1638), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1640 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1641 = u32[] multiply(u32[] %multiply.1639, u32[] %get-dimension-size.1640), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.1642 = f32[] convert(u32[] %multiply.1641), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1635 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1636 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1637 = s32[] multiply(s32[] %get-dimension-size.1635, s32[] %get-dimension-size.1636), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1638 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1639 = s32[] multiply(s32[] %multiply.1637, s32[] %get-dimension-size.1638), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1640 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1627), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1641 = s32[] multiply(s32[] %multiply.1639, s32[] %get-dimension-size.1640), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.1642 = f32[] convert(s32[] %multiply.1641), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.1643 = f32[64]{0} broadcast(f32[] %convert.1642), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.1644 = f32[64]{0} divide(f32[64]{0} %reduce.1634, f32[64]{0} %broadcast.1643), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1645 = f32[64]{0} convert(f32[64]{0} %divide.1644), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2224,14 +2580,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1652 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1653 = f32[] convert(f32[] %constant.1652), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.1658 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651, f32[] %convert.1653), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.1654, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1659 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1660 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1661 = u32[] multiply(u32[] %get-dimension-size.1659, u32[] %get-dimension-size.1660), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1662 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1663 = u32[] multiply(u32[] %multiply.1661, u32[] %get-dimension-size.1662), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1664 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1665 = u32[] multiply(u32[] %multiply.1663, u32[] %get-dimension-size.1664), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.1666 = f32[] convert(u32[] %multiply.1665), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1659 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1660 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1661 = s32[] multiply(s32[] %get-dimension-size.1659, s32[] %get-dimension-size.1660), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1662 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1663 = s32[] multiply(s32[] %multiply.1661, s32[] %get-dimension-size.1662), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1664 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1651), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1665 = s32[] multiply(s32[] %multiply.1663, s32[] %get-dimension-size.1664), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.1666 = f32[] convert(s32[] %multiply.1665), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.1667 = f32[64]{0} broadcast(f32[] %convert.1666), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.1668 = f32[64]{0} divide(f32[64]{0} %reduce.1658, f32[64]{0} %broadcast.1667), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1669 = f32[64]{0} convert(f32[64]{0} %divide.1668), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2257,14 +2613,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1691 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.1692 = f32[] convert(f32[] %constant.1691), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1697 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690, f32[] %convert.1692), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.1693, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1698 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1699 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1700 = u32[] multiply(u32[] %get-dimension-size.1698, u32[] %get-dimension-size.1699), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1701 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1702 = u32[] multiply(u32[] %multiply.1700, u32[] %get-dimension-size.1701), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1703 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1704 = u32[] multiply(u32[] %multiply.1702, u32[] %get-dimension-size.1703), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1705 = f32[] convert(u32[] %multiply.1704), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1698 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1699 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1700 = s32[] multiply(s32[] %get-dimension-size.1698, s32[] %get-dimension-size.1699), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1701 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1702 = s32[] multiply(s32[] %multiply.1700, s32[] %get-dimension-size.1701), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1703 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1690), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1704 = s32[] multiply(s32[] %multiply.1702, s32[] %get-dimension-size.1703), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1705 = f32[] convert(s32[] %multiply.1704), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1706 = f32[64]{0} broadcast(f32[] %convert.1705), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.1707 = f32[64]{0} divide(f32[64]{0} %reduce.1697, f32[64]{0} %broadcast.1706), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.1708 = f32[64]{0} convert(f32[64]{0} %divide.1707), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -2277,14 +2633,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1715 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.1716 = f32[] convert(f32[] %constant.1715), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1721 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714, f32[] %convert.1716), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.1717, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1722 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1723 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1724 = u32[] multiply(u32[] %get-dimension-size.1722, u32[] %get-dimension-size.1723), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1725 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1726 = u32[] multiply(u32[] %multiply.1724, u32[] %get-dimension-size.1725), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1727 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1728 = u32[] multiply(u32[] %multiply.1726, u32[] %get-dimension-size.1727), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1729 = f32[] convert(u32[] %multiply.1728), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1722 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1723 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1724 = s32[] multiply(s32[] %get-dimension-size.1722, s32[] %get-dimension-size.1723), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1725 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1726 = s32[] multiply(s32[] %multiply.1724, s32[] %get-dimension-size.1725), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1727 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1714), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1728 = s32[] multiply(s32[] %multiply.1726, s32[] %get-dimension-size.1727), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1729 = f32[] convert(s32[] %multiply.1728), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1730 = f32[64]{0} broadcast(f32[] %convert.1729), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.1731 = f32[64]{0} divide(f32[64]{0} %reduce.1721, f32[64]{0} %broadcast.1730), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.1732 = f32[64]{0} convert(f32[64]{0} %divide.1731), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -2308,14 +2664,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1752 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1753 = f32[] convert(f32[] %constant.1752), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1758 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751, f32[] %convert.1753), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1754, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1759 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1760 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1761 = u32[] multiply(u32[] %get-dimension-size.1759, u32[] %get-dimension-size.1760), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1762 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1763 = u32[] multiply(u32[] %multiply.1761, u32[] %get-dimension-size.1762), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1764 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1765 = u32[] multiply(u32[] %multiply.1763, u32[] %get-dimension-size.1764), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1766 = f32[] convert(u32[] %multiply.1765), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1759 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1760 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1761 = s32[] multiply(s32[] %get-dimension-size.1759, s32[] %get-dimension-size.1760), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1762 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1763 = s32[] multiply(s32[] %multiply.1761, s32[] %get-dimension-size.1762), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1764 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1751), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1765 = s32[] multiply(s32[] %multiply.1763, s32[] %get-dimension-size.1764), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1766 = f32[] convert(s32[] %multiply.1765), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1767 = f32[128]{0} broadcast(f32[] %convert.1766), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1768 = f32[128]{0} divide(f32[128]{0} %reduce.1758, f32[128]{0} %broadcast.1767), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1769 = f32[128]{0} convert(f32[128]{0} %divide.1768), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2328,14 +2684,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1776 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1777 = f32[] convert(f32[] %constant.1776), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1782 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775, f32[] %convert.1777), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1778, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1783 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1784 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1785 = u32[] multiply(u32[] %get-dimension-size.1783, u32[] %get-dimension-size.1784), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1786 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1787 = u32[] multiply(u32[] %multiply.1785, u32[] %get-dimension-size.1786), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1788 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1789 = u32[] multiply(u32[] %multiply.1787, u32[] %get-dimension-size.1788), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1790 = f32[] convert(u32[] %multiply.1789), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1783 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1784 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1785 = s32[] multiply(s32[] %get-dimension-size.1783, s32[] %get-dimension-size.1784), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1786 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1787 = s32[] multiply(s32[] %multiply.1785, s32[] %get-dimension-size.1786), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1788 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1775), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1789 = s32[] multiply(s32[] %multiply.1787, s32[] %get-dimension-size.1788), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1790 = f32[] convert(s32[] %multiply.1789), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1791 = f32[128]{0} broadcast(f32[] %convert.1790), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1792 = f32[128]{0} divide(f32[128]{0} %reduce.1782, f32[128]{0} %broadcast.1791), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1793 = f32[128]{0} convert(f32[128]{0} %divide.1792), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2363,14 +2719,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1809 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1810 = f32[] convert(f32[] %constant.1809), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1815 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808, f32[] %convert.1810), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1811, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1816 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1817 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1818 = u32[] multiply(u32[] %get-dimension-size.1816, u32[] %get-dimension-size.1817), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1819 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1820 = u32[] multiply(u32[] %multiply.1818, u32[] %get-dimension-size.1819), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1821 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1822 = u32[] multiply(u32[] %multiply.1820, u32[] %get-dimension-size.1821), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1823 = f32[] convert(u32[] %multiply.1822), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1816 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1817 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1818 = s32[] multiply(s32[] %get-dimension-size.1816, s32[] %get-dimension-size.1817), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1819 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1820 = s32[] multiply(s32[] %multiply.1818, s32[] %get-dimension-size.1819), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1821 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1808), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1822 = s32[] multiply(s32[] %multiply.1820, s32[] %get-dimension-size.1821), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1823 = f32[] convert(s32[] %multiply.1822), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1824 = f32[128]{0} broadcast(f32[] %convert.1823), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1825 = f32[128]{0} divide(f32[128]{0} %reduce.1815, f32[128]{0} %broadcast.1824), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1826 = f32[128]{0} convert(f32[128]{0} %divide.1825), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2383,14 +2739,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1833 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1834 = f32[] convert(f32[] %constant.1833), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1839 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832, f32[] %convert.1834), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1835, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1840 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1841 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1842 = u32[] multiply(u32[] %get-dimension-size.1840, u32[] %get-dimension-size.1841), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1843 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1844 = u32[] multiply(u32[] %multiply.1842, u32[] %get-dimension-size.1843), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1845 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1846 = u32[] multiply(u32[] %multiply.1844, u32[] %get-dimension-size.1845), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1847 = f32[] convert(u32[] %multiply.1846), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1840 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1841 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1842 = s32[] multiply(s32[] %get-dimension-size.1840, s32[] %get-dimension-size.1841), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1843 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1844 = s32[] multiply(s32[] %multiply.1842, s32[] %get-dimension-size.1843), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1845 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.1832), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1846 = s32[] multiply(s32[] %multiply.1844, s32[] %get-dimension-size.1845), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1847 = f32[] convert(s32[] %multiply.1846), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1848 = f32[128]{0} broadcast(f32[] %convert.1847), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1849 = f32[128]{0} divide(f32[128]{0} %reduce.1839, f32[128]{0} %broadcast.1848), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1850 = f32[128]{0} convert(f32[128]{0} %divide.1849), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2413,14 +2769,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1869 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1870 = f32[] convert(f32[] %constant.1869), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1875 = f32[256]{0} reduce(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868, f32[] %convert.1870), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1871, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1876 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1877 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1878 = u32[] multiply(u32[] %get-dimension-size.1876, u32[] %get-dimension-size.1877), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1879 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1880 = u32[] multiply(u32[] %multiply.1878, u32[] %get-dimension-size.1879), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1881 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1882 = u32[] multiply(u32[] %multiply.1880, u32[] %get-dimension-size.1881), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.1883 = f32[] convert(u32[] %multiply.1882), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1876 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1877 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1878 = s32[] multiply(s32[] %get-dimension-size.1876, s32[] %get-dimension-size.1877), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1879 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1880 = s32[] multiply(s32[] %multiply.1878, s32[] %get-dimension-size.1879), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1881 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1868), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1882 = s32[] multiply(s32[] %multiply.1880, s32[] %get-dimension-size.1881), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.1883 = f32[] convert(s32[] %multiply.1882), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.1884 = f32[256]{0} broadcast(f32[] %convert.1883), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.1885 = f32[256]{0} divide(f32[256]{0} %reduce.1875, f32[256]{0} %broadcast.1884), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1886 = f32[256]{0} convert(f32[256]{0} %divide.1885), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2433,14 +2789,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1893 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1894 = f32[] convert(f32[] %constant.1893), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.1899 = f32[256]{0} reduce(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892, f32[] %convert.1894), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.1895, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1900 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1901 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1902 = u32[] multiply(u32[] %get-dimension-size.1900, u32[] %get-dimension-size.1901), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1903 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1904 = u32[] multiply(u32[] %multiply.1902, u32[] %get-dimension-size.1903), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1905 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.1906 = u32[] multiply(u32[] %multiply.1904, u32[] %get-dimension-size.1905), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.1907 = f32[] convert(u32[] %multiply.1906), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1900 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1901 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1902 = s32[] multiply(s32[] %get-dimension-size.1900, s32[] %get-dimension-size.1901), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1903 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1904 = s32[] multiply(s32[] %multiply.1902, s32[] %get-dimension-size.1903), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1905 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.1892), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.1906 = s32[] multiply(s32[] %multiply.1904, s32[] %get-dimension-size.1905), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.1907 = f32[] convert(s32[] %multiply.1906), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.1908 = f32[256]{0} broadcast(f32[] %convert.1907), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.1909 = f32[256]{0} divide(f32[256]{0} %reduce.1899, f32[256]{0} %broadcast.1908), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.1910 = f32[256]{0} convert(f32[256]{0} %divide.1909), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2468,14 +2824,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1926 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1927 = f32[] convert(f32[] %constant.1926), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.1932 = f32[24]{0} reduce(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925, f32[] %convert.1927), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.1928, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1933 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1934 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1935 = u32[] multiply(u32[] %get-dimension-size.1933, u32[] %get-dimension-size.1934), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1936 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1937 = u32[] multiply(u32[] %multiply.1935, u32[] %get-dimension-size.1936), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1938 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.1939 = u32[] multiply(u32[] %multiply.1937, u32[] %get-dimension-size.1938), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.1940 = f32[] convert(u32[] %multiply.1939), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1933 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1934 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1935 = s32[] multiply(s32[] %get-dimension-size.1933, s32[] %get-dimension-size.1934), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1936 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1937 = s32[] multiply(s32[] %multiply.1935, s32[] %get-dimension-size.1936), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1938 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1925), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.1939 = s32[] multiply(s32[] %multiply.1937, s32[] %get-dimension-size.1938), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.1940 = f32[] convert(s32[] %multiply.1939), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.1941 = f32[24]{0} broadcast(f32[] %convert.1940), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.1942 = f32[24]{0} divide(f32[24]{0} %reduce.1932, f32[24]{0} %broadcast.1941), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.1943 = f32[24]{0} convert(f32[24]{0} %divide.1942), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2488,14 +2844,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1950 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1951 = f32[] convert(f32[] %constant.1950), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.1956 = f32[24]{0} reduce(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949, f32[] %convert.1951), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.1952, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1957 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1958 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1959 = u32[] multiply(u32[] %get-dimension-size.1957, u32[] %get-dimension-size.1958), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1960 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1961 = u32[] multiply(u32[] %multiply.1959, u32[] %get-dimension-size.1960), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.1962 = u32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.1963 = u32[] multiply(u32[] %multiply.1961, u32[] %get-dimension-size.1962), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.1964 = f32[] convert(u32[] %multiply.1963), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1957 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1958 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1959 = s32[] multiply(s32[] %get-dimension-size.1957, s32[] %get-dimension-size.1958), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1960 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1961 = s32[] multiply(s32[] %multiply.1959, s32[] %get-dimension-size.1960), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.1962 = s32[] get-dimension-size(f32[1,8,14,14,24]{4,3,2,1,0} %convert.1949), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.1963 = s32[] multiply(s32[] %multiply.1961, s32[] %get-dimension-size.1962), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.1964 = f32[] convert(s32[] %multiply.1963), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.1965 = f32[24]{0} broadcast(f32[] %convert.1964), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.1966 = f32[24]{0} divide(f32[24]{0} %reduce.1956, f32[24]{0} %broadcast.1965), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.1967 = f32[24]{0} convert(f32[24]{0} %divide.1966), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2518,14 +2874,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.1986 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.1987 = f32[] convert(f32[] %constant.1986), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.1992 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985, f32[] %convert.1987), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.1988, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1993 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1994 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1995 = u32[] multiply(u32[] %get-dimension-size.1993, u32[] %get-dimension-size.1994), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1996 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1997 = u32[] multiply(u32[] %multiply.1995, u32[] %get-dimension-size.1996), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.1998 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.1999 = u32[] multiply(u32[] %multiply.1997, u32[] %get-dimension-size.1998), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2000 = f32[] convert(u32[] %multiply.1999), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1993 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1994 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1995 = s32[] multiply(s32[] %get-dimension-size.1993, s32[] %get-dimension-size.1994), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1996 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1997 = s32[] multiply(s32[] %multiply.1995, s32[] %get-dimension-size.1996), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.1998 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.1985), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.1999 = s32[] multiply(s32[] %multiply.1997, s32[] %get-dimension-size.1998), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2000 = f32[] convert(s32[] %multiply.1999), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2001 = f32[64]{0} broadcast(f32[] %convert.2000), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2002 = f32[64]{0} divide(f32[64]{0} %reduce.1992, f32[64]{0} %broadcast.2001), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2003 = f32[64]{0} convert(f32[64]{0} %divide.2002), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2538,14 +2894,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2010 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2011 = f32[] convert(f32[] %constant.2010), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2016 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009, f32[] %convert.2011), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2012, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2017 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2018 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2019 = u32[] multiply(u32[] %get-dimension-size.2017, u32[] %get-dimension-size.2018), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2020 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2021 = u32[] multiply(u32[] %multiply.2019, u32[] %get-dimension-size.2020), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2022 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2023 = u32[] multiply(u32[] %multiply.2021, u32[] %get-dimension-size.2022), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2024 = f32[] convert(u32[] %multiply.2023), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2017 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2018 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2019 = s32[] multiply(s32[] %get-dimension-size.2017, s32[] %get-dimension-size.2018), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2020 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2021 = s32[] multiply(s32[] %multiply.2019, s32[] %get-dimension-size.2020), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2022 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2009), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2023 = s32[] multiply(s32[] %multiply.2021, s32[] %get-dimension-size.2022), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2024 = f32[] convert(s32[] %multiply.2023), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2025 = f32[64]{0} broadcast(f32[] %convert.2024), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2026 = f32[64]{0} divide(f32[64]{0} %reduce.2016, f32[64]{0} %broadcast.2025), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2027 = f32[64]{0} convert(f32[64]{0} %divide.2026), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2571,14 +2927,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2049 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2050 = f32[] convert(f32[] %constant.2049), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2055 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048, f32[] %convert.2050), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.2051, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2056 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2057 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2058 = u32[] multiply(u32[] %get-dimension-size.2056, u32[] %get-dimension-size.2057), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2059 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2060 = u32[] multiply(u32[] %multiply.2058, u32[] %get-dimension-size.2059), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2061 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2062 = u32[] multiply(u32[] %multiply.2060, u32[] %get-dimension-size.2061), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2063 = f32[] convert(u32[] %multiply.2062), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2056 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2057 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2058 = s32[] multiply(s32[] %get-dimension-size.2056, s32[] %get-dimension-size.2057), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2059 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2060 = s32[] multiply(s32[] %multiply.2058, s32[] %get-dimension-size.2059), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2061 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2048), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2062 = s32[] multiply(s32[] %multiply.2060, s32[] %get-dimension-size.2061), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2063 = f32[] convert(s32[] %multiply.2062), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2064 = f32[64]{0} broadcast(f32[] %convert.2063), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.2065 = f32[64]{0} divide(f32[64]{0} %reduce.2055, f32[64]{0} %broadcast.2064), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2066 = f32[64]{0} convert(f32[64]{0} %divide.2065), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -2591,14 +2947,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2073 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2074 = f32[] convert(f32[] %constant.2073), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2079 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072, f32[] %convert.2074), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.2075, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2080 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2081 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2082 = u32[] multiply(u32[] %get-dimension-size.2080, u32[] %get-dimension-size.2081), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2083 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2084 = u32[] multiply(u32[] %multiply.2082, u32[] %get-dimension-size.2083), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2085 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2086 = u32[] multiply(u32[] %multiply.2084, u32[] %get-dimension-size.2085), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2087 = f32[] convert(u32[] %multiply.2086), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2080 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2081 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2082 = s32[] multiply(s32[] %get-dimension-size.2080, s32[] %get-dimension-size.2081), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2083 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2084 = s32[] multiply(s32[] %multiply.2082, s32[] %get-dimension-size.2083), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2085 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2072), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2086 = s32[] multiply(s32[] %multiply.2084, s32[] %get-dimension-size.2085), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2087 = f32[] convert(s32[] %multiply.2086), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2088 = f32[64]{0} broadcast(f32[] %convert.2087), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.2089 = f32[64]{0} divide(f32[64]{0} %reduce.2079, f32[64]{0} %broadcast.2088), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2090 = f32[64]{0} convert(f32[64]{0} %divide.2089), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -2622,14 +2978,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2110 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2111 = f32[] convert(f32[] %constant.2110), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2116 = f32[112]{0} reduce(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109, f32[] %convert.2111), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2112, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2117 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2118 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2119 = u32[] multiply(u32[] %get-dimension-size.2117, u32[] %get-dimension-size.2118), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2120 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2121 = u32[] multiply(u32[] %multiply.2119, u32[] %get-dimension-size.2120), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2122 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2123 = u32[] multiply(u32[] %multiply.2121, u32[] %get-dimension-size.2122), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2124 = f32[] convert(u32[] %multiply.2123), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2117 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2118 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2119 = s32[] multiply(s32[] %get-dimension-size.2117, s32[] %get-dimension-size.2118), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2120 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2121 = s32[] multiply(s32[] %multiply.2119, s32[] %get-dimension-size.2120), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2122 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2109), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2123 = s32[] multiply(s32[] %multiply.2121, s32[] %get-dimension-size.2122), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2124 = f32[] convert(s32[] %multiply.2123), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2125 = f32[112]{0} broadcast(f32[] %convert.2124), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2126 = f32[112]{0} divide(f32[112]{0} %reduce.2116, f32[112]{0} %broadcast.2125), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2127 = f32[112]{0} convert(f32[112]{0} %divide.2126), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2642,14 +2998,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2134 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2135 = f32[] convert(f32[] %constant.2134), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2140 = f32[112]{0} reduce(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133, f32[] %convert.2135), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2136, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2141 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2142 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2143 = u32[] multiply(u32[] %get-dimension-size.2141, u32[] %get-dimension-size.2142), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2144 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2145 = u32[] multiply(u32[] %multiply.2143, u32[] %get-dimension-size.2144), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2146 = u32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2147 = u32[] multiply(u32[] %multiply.2145, u32[] %get-dimension-size.2146), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2148 = f32[] convert(u32[] %multiply.2147), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2141 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2142 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2143 = s32[] multiply(s32[] %get-dimension-size.2141, s32[] %get-dimension-size.2142), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2144 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2145 = s32[] multiply(s32[] %multiply.2143, s32[] %get-dimension-size.2144), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2146 = s32[] get-dimension-size(f32[1,8,14,14,112]{4,3,2,1,0} %convert.2133), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2147 = s32[] multiply(s32[] %multiply.2145, s32[] %get-dimension-size.2146), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2148 = f32[] convert(s32[] %multiply.2147), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2149 = f32[112]{0} broadcast(f32[] %convert.2148), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2150 = f32[112]{0} divide(f32[112]{0} %reduce.2140, f32[112]{0} %broadcast.2149), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2151 = f32[112]{0} convert(f32[112]{0} %divide.2150), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2677,14 +3033,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2167 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2168 = f32[] convert(f32[] %constant.2167), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2173 = f32[144]{0} reduce(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166, f32[] %convert.2168), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2169, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2174 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2175 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2176 = u32[] multiply(u32[] %get-dimension-size.2174, u32[] %get-dimension-size.2175), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2177 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2178 = u32[] multiply(u32[] %multiply.2176, u32[] %get-dimension-size.2177), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2179 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2180 = u32[] multiply(u32[] %multiply.2178, u32[] %get-dimension-size.2179), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2181 = f32[] convert(u32[] %multiply.2180), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2174 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2175 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2176 = s32[] multiply(s32[] %get-dimension-size.2174, s32[] %get-dimension-size.2175), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2177 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2178 = s32[] multiply(s32[] %multiply.2176, s32[] %get-dimension-size.2177), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2179 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2166), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2180 = s32[] multiply(s32[] %multiply.2178, s32[] %get-dimension-size.2179), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2181 = f32[] convert(s32[] %multiply.2180), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2182 = f32[144]{0} broadcast(f32[] %convert.2181), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2183 = f32[144]{0} divide(f32[144]{0} %reduce.2173, f32[144]{0} %broadcast.2182), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2184 = f32[144]{0} convert(f32[144]{0} %divide.2183), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2697,14 +3053,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2191 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2192 = f32[] convert(f32[] %constant.2191), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2197 = f32[144]{0} reduce(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190, f32[] %convert.2192), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2193, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2198 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2199 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2200 = u32[] multiply(u32[] %get-dimension-size.2198, u32[] %get-dimension-size.2199), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2201 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2202 = u32[] multiply(u32[] %multiply.2200, u32[] %get-dimension-size.2201), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2203 = u32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2204 = u32[] multiply(u32[] %multiply.2202, u32[] %get-dimension-size.2203), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2205 = f32[] convert(u32[] %multiply.2204), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2198 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2199 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2200 = s32[] multiply(s32[] %get-dimension-size.2198, s32[] %get-dimension-size.2199), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2201 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2202 = s32[] multiply(s32[] %multiply.2200, s32[] %get-dimension-size.2201), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2203 = s32[] get-dimension-size(f32[1,8,14,14,144]{4,3,2,1,0} %convert.2190), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2204 = s32[] multiply(s32[] %multiply.2202, s32[] %get-dimension-size.2203), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2205 = f32[] convert(s32[] %multiply.2204), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2206 = f32[144]{0} broadcast(f32[] %convert.2205), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2207 = f32[144]{0} divide(f32[144]{0} %reduce.2197, f32[144]{0} %broadcast.2206), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2208 = f32[144]{0} convert(f32[144]{0} %divide.2207), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2727,14 +3083,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2227 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2228 = f32[] convert(f32[] %constant.2227), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.2233 = f32[288]{0} reduce(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226, f32[] %convert.2228), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.2229, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2234 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2235 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2236 = u32[] multiply(u32[] %get-dimension-size.2234, u32[] %get-dimension-size.2235), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2237 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2238 = u32[] multiply(u32[] %multiply.2236, u32[] %get-dimension-size.2237), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2239 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2240 = u32[] multiply(u32[] %multiply.2238, u32[] %get-dimension-size.2239), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2241 = f32[] convert(u32[] %multiply.2240), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2234 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2235 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2236 = s32[] multiply(s32[] %get-dimension-size.2234, s32[] %get-dimension-size.2235), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2237 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2238 = s32[] multiply(s32[] %multiply.2236, s32[] %get-dimension-size.2237), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2239 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2226), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2240 = s32[] multiply(s32[] %multiply.2238, s32[] %get-dimension-size.2239), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2241 = f32[] convert(s32[] %multiply.2240), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2242 = f32[288]{0} broadcast(f32[] %convert.2241), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2243 = f32[288]{0} divide(f32[288]{0} %reduce.2233, f32[288]{0} %broadcast.2242), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2244 = f32[288]{0} convert(f32[288]{0} %divide.2243), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2747,14 +3103,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2251 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2252 = f32[] convert(f32[] %constant.2251), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2257 = f32[288]{0} reduce(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250, f32[] %convert.2252), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2253, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2258 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2259 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2260 = u32[] multiply(u32[] %get-dimension-size.2258, u32[] %get-dimension-size.2259), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2261 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2262 = u32[] multiply(u32[] %multiply.2260, u32[] %get-dimension-size.2261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2263 = u32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2264 = u32[] multiply(u32[] %multiply.2262, u32[] %get-dimension-size.2263), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2265 = f32[] convert(u32[] %multiply.2264), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2258 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2259 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2260 = s32[] multiply(s32[] %get-dimension-size.2258, s32[] %get-dimension-size.2259), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2261 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2262 = s32[] multiply(s32[] %multiply.2260, s32[] %get-dimension-size.2261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2263 = s32[] get-dimension-size(f32[1,8,14,14,288]{4,3,2,1,0} %convert.2250), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2264 = s32[] multiply(s32[] %multiply.2262, s32[] %get-dimension-size.2263), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2265 = f32[] convert(s32[] %multiply.2264), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2266 = f32[288]{0} broadcast(f32[] %convert.2265), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2267 = f32[288]{0} divide(f32[288]{0} %reduce.2257, f32[288]{0} %broadcast.2266), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2268 = f32[288]{0} convert(f32[288]{0} %divide.2267), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2782,14 +3138,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2284 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2285 = f32[] convert(f32[] %constant.2284), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2290 = f32[32]{0} reduce(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283, f32[] %convert.2285), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2286, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2291 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2292 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2293 = u32[] multiply(u32[] %get-dimension-size.2291, u32[] %get-dimension-size.2292), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2294 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2295 = u32[] multiply(u32[] %multiply.2293, u32[] %get-dimension-size.2294), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2296 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2297 = u32[] multiply(u32[] %multiply.2295, u32[] %get-dimension-size.2296), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2298 = f32[] convert(u32[] %multiply.2297), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2291 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2292 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2293 = s32[] multiply(s32[] %get-dimension-size.2291, s32[] %get-dimension-size.2292), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2294 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2295 = s32[] multiply(s32[] %multiply.2293, s32[] %get-dimension-size.2294), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2296 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2283), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2297 = s32[] multiply(s32[] %multiply.2295, s32[] %get-dimension-size.2296), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2298 = f32[] convert(s32[] %multiply.2297), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2299 = f32[32]{0} broadcast(f32[] %convert.2298), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2300 = f32[32]{0} divide(f32[32]{0} %reduce.2290, f32[32]{0} %broadcast.2299), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2301 = f32[32]{0} convert(f32[32]{0} %divide.2300), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2802,14 +3158,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2308 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2309 = f32[] convert(f32[] %constant.2308), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2314 = f32[32]{0} reduce(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307, f32[] %convert.2309), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2310, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2315 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2316 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2317 = u32[] multiply(u32[] %get-dimension-size.2315, u32[] %get-dimension-size.2316), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2318 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2319 = u32[] multiply(u32[] %multiply.2317, u32[] %get-dimension-size.2318), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2320 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2321 = u32[] multiply(u32[] %multiply.2319, u32[] %get-dimension-size.2320), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2322 = f32[] convert(u32[] %multiply.2321), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2315 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2316 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2317 = s32[] multiply(s32[] %get-dimension-size.2315, s32[] %get-dimension-size.2316), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2318 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2319 = s32[] multiply(s32[] %multiply.2317, s32[] %get-dimension-size.2318), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2320 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2307), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2321 = s32[] multiply(s32[] %multiply.2319, s32[] %get-dimension-size.2320), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2322 = f32[] convert(s32[] %multiply.2321), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2323 = f32[32]{0} broadcast(f32[] %convert.2322), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2324 = f32[32]{0} divide(f32[32]{0} %reduce.2314, f32[32]{0} %broadcast.2323), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2325 = f32[32]{0} convert(f32[32]{0} %divide.2324), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2832,14 +3188,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2344 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2345 = f32[] convert(f32[] %constant.2344), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.2350 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343, f32[] %convert.2345), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.2346, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2351 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2352 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2353 = u32[] multiply(u32[] %get-dimension-size.2351, u32[] %get-dimension-size.2352), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2354 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2355 = u32[] multiply(u32[] %multiply.2353, u32[] %get-dimension-size.2354), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2356 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2357 = u32[] multiply(u32[] %multiply.2355, u32[] %get-dimension-size.2356), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2358 = f32[] convert(u32[] %multiply.2357), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2351 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2352 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2353 = s32[] multiply(s32[] %get-dimension-size.2351, s32[] %get-dimension-size.2352), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2354 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2355 = s32[] multiply(s32[] %multiply.2353, s32[] %get-dimension-size.2354), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2356 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2343), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2357 = s32[] multiply(s32[] %multiply.2355, s32[] %get-dimension-size.2356), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2358 = f32[] convert(s32[] %multiply.2357), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2359 = f32[64]{0} broadcast(f32[] %convert.2358), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2360 = f32[64]{0} divide(f32[64]{0} %reduce.2350, f32[64]{0} %broadcast.2359), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2361 = f32[64]{0} convert(f32[64]{0} %divide.2360), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -2852,14 +3208,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2368 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2369 = f32[] convert(f32[] %constant.2368), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2374 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367, f32[] %convert.2369), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2370, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2375 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2376 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2377 = u32[] multiply(u32[] %get-dimension-size.2375, u32[] %get-dimension-size.2376), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2378 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2379 = u32[] multiply(u32[] %multiply.2377, u32[] %get-dimension-size.2378), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2380 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2381 = u32[] multiply(u32[] %multiply.2379, u32[] %get-dimension-size.2380), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2382 = f32[] convert(u32[] %multiply.2381), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2375 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2376 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2377 = s32[] multiply(s32[] %get-dimension-size.2375, s32[] %get-dimension-size.2376), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2378 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2379 = s32[] multiply(s32[] %multiply.2377, s32[] %get-dimension-size.2378), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2380 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2367), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2381 = s32[] multiply(s32[] %multiply.2379, s32[] %get-dimension-size.2380), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2382 = f32[] convert(s32[] %multiply.2381), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2383 = f32[64]{0} broadcast(f32[] %convert.2382), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2384 = f32[64]{0} divide(f32[64]{0} %reduce.2374, f32[64]{0} %broadcast.2383), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2385 = f32[64]{0} convert(f32[64]{0} %divide.2384), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -2885,14 +3241,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2407 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2408 = f32[] convert(f32[] %constant.2407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2413 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406, f32[] %convert.2408), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.2409, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2414 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2415 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2416 = u32[] multiply(u32[] %get-dimension-size.2414, u32[] %get-dimension-size.2415), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2417 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2418 = u32[] multiply(u32[] %multiply.2416, u32[] %get-dimension-size.2417), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2419 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2420 = u32[] multiply(u32[] %multiply.2418, u32[] %get-dimension-size.2419), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2421 = f32[] convert(u32[] %multiply.2420), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2414 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2415 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2416 = s32[] multiply(s32[] %get-dimension-size.2414, s32[] %get-dimension-size.2415), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2417 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2418 = s32[] multiply(s32[] %multiply.2416, s32[] %get-dimension-size.2417), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2419 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2406), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2420 = s32[] multiply(s32[] %multiply.2418, s32[] %get-dimension-size.2419), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2421 = f32[] convert(s32[] %multiply.2420), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2422 = f32[64]{0} broadcast(f32[] %convert.2421), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.2423 = f32[64]{0} divide(f32[64]{0} %reduce.2413, f32[64]{0} %broadcast.2422), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2424 = f32[64]{0} convert(f32[64]{0} %divide.2423), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -2905,14 +3261,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2431 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2432 = f32[] convert(f32[] %constant.2431), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2437 = f32[64]{0} reduce(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430, f32[] %convert.2432), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.2433, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2438 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2439 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2440 = u32[] multiply(u32[] %get-dimension-size.2438, u32[] %get-dimension-size.2439), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2441 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2442 = u32[] multiply(u32[] %multiply.2440, u32[] %get-dimension-size.2441), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2443 = u32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2444 = u32[] multiply(u32[] %multiply.2442, u32[] %get-dimension-size.2443), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2445 = f32[] convert(u32[] %multiply.2444), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2438 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2439 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2440 = s32[] multiply(s32[] %get-dimension-size.2438, s32[] %get-dimension-size.2439), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2441 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2442 = s32[] multiply(s32[] %multiply.2440, s32[] %get-dimension-size.2441), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2443 = s32[] get-dimension-size(f32[1,8,14,14,64]{4,3,2,1,0} %convert.2430), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2444 = s32[] multiply(s32[] %multiply.2442, s32[] %get-dimension-size.2443), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2445 = f32[] convert(s32[] %multiply.2444), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2446 = f32[64]{0} broadcast(f32[] %convert.2445), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.2447 = f32[64]{0} divide(f32[64]{0} %reduce.2437, f32[64]{0} %broadcast.2446), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2448 = f32[64]{0} convert(f32[64]{0} %divide.2447), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -2936,14 +3292,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2468 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2469 = f32[] convert(f32[] %constant.2468), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2474 = f32[256]{0} reduce(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467, f32[] %convert.2469), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2470, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2475 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2476 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2477 = u32[] multiply(u32[] %get-dimension-size.2475, u32[] %get-dimension-size.2476), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2478 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2479 = u32[] multiply(u32[] %multiply.2477, u32[] %get-dimension-size.2478), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2480 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2481 = u32[] multiply(u32[] %multiply.2479, u32[] %get-dimension-size.2480), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2482 = f32[] convert(u32[] %multiply.2481), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2475 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2476 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2477 = s32[] multiply(s32[] %get-dimension-size.2475, s32[] %get-dimension-size.2476), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2478 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2479 = s32[] multiply(s32[] %multiply.2477, s32[] %get-dimension-size.2478), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2480 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2467), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2481 = s32[] multiply(s32[] %multiply.2479, s32[] %get-dimension-size.2480), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2482 = f32[] convert(s32[] %multiply.2481), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2483 = f32[256]{0} broadcast(f32[] %convert.2482), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2484 = f32[256]{0} divide(f32[256]{0} %reduce.2474, f32[256]{0} %broadcast.2483), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2485 = f32[256]{0} convert(f32[256]{0} %divide.2484), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -2956,14 +3312,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2492 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2493 = f32[] convert(f32[] %constant.2492), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2498 = f32[256]{0} reduce(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491, f32[] %convert.2493), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2494, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2499 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2500 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2501 = u32[] multiply(u32[] %get-dimension-size.2499, u32[] %get-dimension-size.2500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2502 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2503 = u32[] multiply(u32[] %multiply.2501, u32[] %get-dimension-size.2502), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2504 = u32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2505 = u32[] multiply(u32[] %multiply.2503, u32[] %get-dimension-size.2504), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2506 = f32[] convert(u32[] %multiply.2505), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2499 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2500 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2501 = s32[] multiply(s32[] %get-dimension-size.2499, s32[] %get-dimension-size.2500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2502 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2503 = s32[] multiply(s32[] %multiply.2501, s32[] %get-dimension-size.2502), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2504 = s32[] get-dimension-size(f32[1,8,14,14,256]{4,3,2,1,0} %convert.2491), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2505 = s32[] multiply(s32[] %multiply.2503, s32[] %get-dimension-size.2504), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2506 = f32[] convert(s32[] %multiply.2505), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2507 = f32[256]{0} broadcast(f32[] %convert.2506), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2508 = f32[256]{0} divide(f32[256]{0} %reduce.2498, f32[256]{0} %broadcast.2507), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2509 = f32[256]{0} convert(f32[256]{0} %divide.2508), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -2991,14 +3347,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2525 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2526 = f32[] convert(f32[] %constant.2525), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2531 = f32[160]{0} reduce(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524, f32[] %convert.2526), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2527, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2532 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2533 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2534 = u32[] multiply(u32[] %get-dimension-size.2532, u32[] %get-dimension-size.2533), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2535 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2536 = u32[] multiply(u32[] %multiply.2534, u32[] %get-dimension-size.2535), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2537 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2538 = u32[] multiply(u32[] %multiply.2536, u32[] %get-dimension-size.2537), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2539 = f32[] convert(u32[] %multiply.2538), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2532 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2533 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2534 = s32[] multiply(s32[] %get-dimension-size.2532, s32[] %get-dimension-size.2533), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2535 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2536 = s32[] multiply(s32[] %multiply.2534, s32[] %get-dimension-size.2535), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2537 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2524), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2538 = s32[] multiply(s32[] %multiply.2536, s32[] %get-dimension-size.2537), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2539 = f32[] convert(s32[] %multiply.2538), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2540 = f32[160]{0} broadcast(f32[] %convert.2539), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2541 = f32[160]{0} divide(f32[160]{0} %reduce.2531, f32[160]{0} %broadcast.2540), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2542 = f32[160]{0} convert(f32[160]{0} %divide.2541), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3011,14 +3367,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2549 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2550 = f32[] convert(f32[] %constant.2549), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2555 = f32[160]{0} reduce(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548, f32[] %convert.2550), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2551, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2556 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2557 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2558 = u32[] multiply(u32[] %get-dimension-size.2556, u32[] %get-dimension-size.2557), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2559 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2560 = u32[] multiply(u32[] %multiply.2558, u32[] %get-dimension-size.2559), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2561 = u32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2562 = u32[] multiply(u32[] %multiply.2560, u32[] %get-dimension-size.2561), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2563 = f32[] convert(u32[] %multiply.2562), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2556 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2557 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2558 = s32[] multiply(s32[] %get-dimension-size.2556, s32[] %get-dimension-size.2557), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2559 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2560 = s32[] multiply(s32[] %multiply.2558, s32[] %get-dimension-size.2559), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2561 = s32[] get-dimension-size(f32[1,8,14,14,160]{4,3,2,1,0} %convert.2548), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2562 = s32[] multiply(s32[] %multiply.2560, s32[] %get-dimension-size.2561), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2563 = f32[] convert(s32[] %multiply.2562), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2564 = f32[160]{0} broadcast(f32[] %convert.2563), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2565 = f32[160]{0} divide(f32[160]{0} %reduce.2555, f32[160]{0} %broadcast.2564), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2566 = f32[160]{0} convert(f32[160]{0} %divide.2565), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3041,14 +3397,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2585 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2586 = f32[] convert(f32[] %constant.2585), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.2591 = f32[320]{0} reduce(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584, f32[] %convert.2586), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.2587, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2592 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2593 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2594 = u32[] multiply(u32[] %get-dimension-size.2592, u32[] %get-dimension-size.2593), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2595 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2596 = u32[] multiply(u32[] %multiply.2594, u32[] %get-dimension-size.2595), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2597 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2598 = u32[] multiply(u32[] %multiply.2596, u32[] %get-dimension-size.2597), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2599 = f32[] convert(u32[] %multiply.2598), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2592 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2593 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2594 = s32[] multiply(s32[] %get-dimension-size.2592, s32[] %get-dimension-size.2593), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2595 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2596 = s32[] multiply(s32[] %multiply.2594, s32[] %get-dimension-size.2595), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2597 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2584), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2598 = s32[] multiply(s32[] %multiply.2596, s32[] %get-dimension-size.2597), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2599 = f32[] convert(s32[] %multiply.2598), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2600 = f32[320]{0} broadcast(f32[] %convert.2599), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2601 = f32[320]{0} divide(f32[320]{0} %reduce.2591, f32[320]{0} %broadcast.2600), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2602 = f32[320]{0} convert(f32[320]{0} %divide.2601), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -3061,14 +3417,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2609 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2610 = f32[] convert(f32[] %constant.2609), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2615 = f32[320]{0} reduce(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608, f32[] %convert.2610), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2611, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2616 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2617 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2618 = u32[] multiply(u32[] %get-dimension-size.2616, u32[] %get-dimension-size.2617), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2619 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2620 = u32[] multiply(u32[] %multiply.2618, u32[] %get-dimension-size.2619), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2621 = u32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2622 = u32[] multiply(u32[] %multiply.2620, u32[] %get-dimension-size.2621), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2623 = f32[] convert(u32[] %multiply.2622), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2616 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2617 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2618 = s32[] multiply(s32[] %get-dimension-size.2616, s32[] %get-dimension-size.2617), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2619 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2620 = s32[] multiply(s32[] %multiply.2618, s32[] %get-dimension-size.2619), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2621 = s32[] get-dimension-size(f32[1,8,14,14,320]{4,3,2,1,0} %convert.2608), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2622 = s32[] multiply(s32[] %multiply.2620, s32[] %get-dimension-size.2621), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2623 = f32[] convert(s32[] %multiply.2622), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2624 = f32[320]{0} broadcast(f32[] %convert.2623), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2625 = f32[320]{0} divide(f32[320]{0} %reduce.2615, f32[320]{0} %broadcast.2624), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2626 = f32[320]{0} convert(f32[320]{0} %divide.2625), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -3096,14 +3452,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2642 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2643 = f32[] convert(f32[] %constant.2642), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2648 = f32[32]{0} reduce(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641, f32[] %convert.2643), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2644, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2649 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2650 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2651 = u32[] multiply(u32[] %get-dimension-size.2649, u32[] %get-dimension-size.2650), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2652 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2653 = u32[] multiply(u32[] %multiply.2651, u32[] %get-dimension-size.2652), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2654 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2655 = u32[] multiply(u32[] %multiply.2653, u32[] %get-dimension-size.2654), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2656 = f32[] convert(u32[] %multiply.2655), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2649 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2650 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2651 = s32[] multiply(s32[] %get-dimension-size.2649, s32[] %get-dimension-size.2650), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2652 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2653 = s32[] multiply(s32[] %multiply.2651, s32[] %get-dimension-size.2652), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2654 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2641), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2655 = s32[] multiply(s32[] %multiply.2653, s32[] %get-dimension-size.2654), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2656 = f32[] convert(s32[] %multiply.2655), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2657 = f32[32]{0} broadcast(f32[] %convert.2656), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2658 = f32[32]{0} divide(f32[32]{0} %reduce.2648, f32[32]{0} %broadcast.2657), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2659 = f32[32]{0} convert(f32[32]{0} %divide.2658), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3116,14 +3472,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2666 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2667 = f32[] convert(f32[] %constant.2666), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2672 = f32[32]{0} reduce(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665, f32[] %convert.2667), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2668, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2673 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2674 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2675 = u32[] multiply(u32[] %get-dimension-size.2673, u32[] %get-dimension-size.2674), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2676 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2677 = u32[] multiply(u32[] %multiply.2675, u32[] %get-dimension-size.2676), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2678 = u32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2679 = u32[] multiply(u32[] %multiply.2677, u32[] %get-dimension-size.2678), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2680 = f32[] convert(u32[] %multiply.2679), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2673 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2674 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2675 = s32[] multiply(s32[] %get-dimension-size.2673, s32[] %get-dimension-size.2674), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2676 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2677 = s32[] multiply(s32[] %multiply.2675, s32[] %get-dimension-size.2676), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2678 = s32[] get-dimension-size(f32[1,8,14,14,32]{4,3,2,1,0} %convert.2665), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2679 = s32[] multiply(s32[] %multiply.2677, s32[] %get-dimension-size.2678), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2680 = f32[] convert(s32[] %multiply.2679), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2681 = f32[32]{0} broadcast(f32[] %convert.2680), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2682 = f32[32]{0} divide(f32[32]{0} %reduce.2672, f32[32]{0} %broadcast.2681), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2683 = f32[32]{0} convert(f32[32]{0} %divide.2682), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3146,14 +3502,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2702 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2703 = f32[] convert(f32[] %constant.2702), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.2708 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701, f32[] %convert.2703), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.2704, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2709 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2710 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2711 = u32[] multiply(u32[] %get-dimension-size.2709, u32[] %get-dimension-size.2710), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2712 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2713 = u32[] multiply(u32[] %multiply.2711, u32[] %get-dimension-size.2712), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2714 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2715 = u32[] multiply(u32[] %multiply.2713, u32[] %get-dimension-size.2714), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2716 = f32[] convert(u32[] %multiply.2715), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2709 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2710 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2711 = s32[] multiply(s32[] %get-dimension-size.2709, s32[] %get-dimension-size.2710), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2712 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2713 = s32[] multiply(s32[] %multiply.2711, s32[] %get-dimension-size.2712), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2714 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2701), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2715 = s32[] multiply(s32[] %multiply.2713, s32[] %get-dimension-size.2714), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2716 = f32[] convert(s32[] %multiply.2715), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2717 = f32[128]{0} broadcast(f32[] %convert.2716), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2718 = f32[128]{0} divide(f32[128]{0} %reduce.2708, f32[128]{0} %broadcast.2717), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2719 = f32[128]{0} convert(f32[128]{0} %divide.2718), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -3166,14 +3522,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2726 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2727 = f32[] convert(f32[] %constant.2726), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2732 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725, f32[] %convert.2727), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2728, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2733 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2734 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2735 = u32[] multiply(u32[] %get-dimension-size.2733, u32[] %get-dimension-size.2734), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2736 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2737 = u32[] multiply(u32[] %multiply.2735, u32[] %get-dimension-size.2736), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2738 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2739 = u32[] multiply(u32[] %multiply.2737, u32[] %get-dimension-size.2738), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2740 = f32[] convert(u32[] %multiply.2739), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2733 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2734 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2735 = s32[] multiply(s32[] %get-dimension-size.2733, s32[] %get-dimension-size.2734), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2736 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2737 = s32[] multiply(s32[] %multiply.2735, s32[] %get-dimension-size.2736), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2738 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2725), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2739 = s32[] multiply(s32[] %multiply.2737, s32[] %get-dimension-size.2738), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2740 = f32[] convert(s32[] %multiply.2739), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2741 = f32[128]{0} broadcast(f32[] %convert.2740), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2742 = f32[128]{0} divide(f32[128]{0} %reduce.2732, f32[128]{0} %broadcast.2741), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2743 = f32[128]{0} convert(f32[128]{0} %divide.2742), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -3199,14 +3555,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2765 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2766 = f32[] convert(f32[] %constant.2765), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2771 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764, f32[] %convert.2766), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.2767, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2772 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2773 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2774 = u32[] multiply(u32[] %get-dimension-size.2772, u32[] %get-dimension-size.2773), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2775 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2776 = u32[] multiply(u32[] %multiply.2774, u32[] %get-dimension-size.2775), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2777 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2778 = u32[] multiply(u32[] %multiply.2776, u32[] %get-dimension-size.2777), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2779 = f32[] convert(u32[] %multiply.2778), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2772 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2773 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2774 = s32[] multiply(s32[] %get-dimension-size.2772, s32[] %get-dimension-size.2773), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2775 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2776 = s32[] multiply(s32[] %multiply.2774, s32[] %get-dimension-size.2775), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2777 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2764), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2778 = s32[] multiply(s32[] %multiply.2776, s32[] %get-dimension-size.2777), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2779 = f32[] convert(s32[] %multiply.2778), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2780 = f32[128]{0} broadcast(f32[] %convert.2779), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.2781 = f32[128]{0} divide(f32[128]{0} %reduce.2771, f32[128]{0} %broadcast.2780), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.2782 = f32[128]{0} convert(f32[128]{0} %divide.2781), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -3219,14 +3575,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2789 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2790 = f32[] convert(f32[] %constant.2789), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2795 = f32[128]{0} reduce(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788, f32[] %convert.2790), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.2791, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2796 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2797 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2798 = u32[] multiply(u32[] %get-dimension-size.2796, u32[] %get-dimension-size.2797), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2799 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2800 = u32[] multiply(u32[] %multiply.2798, u32[] %get-dimension-size.2799), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2801 = u32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2802 = u32[] multiply(u32[] %multiply.2800, u32[] %get-dimension-size.2801), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2803 = f32[] convert(u32[] %multiply.2802), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2796 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2797 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2798 = s32[] multiply(s32[] %get-dimension-size.2796, s32[] %get-dimension-size.2797), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2799 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2800 = s32[] multiply(s32[] %multiply.2798, s32[] %get-dimension-size.2799), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2801 = s32[] get-dimension-size(f32[1,8,14,14,128]{4,3,2,1,0} %convert.2788), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2802 = s32[] multiply(s32[] %multiply.2800, s32[] %get-dimension-size.2801), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2803 = f32[] convert(s32[] %multiply.2802), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2804 = f32[128]{0} broadcast(f32[] %convert.2803), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.2805 = f32[128]{0} divide(f32[128]{0} %reduce.2795, f32[128]{0} %broadcast.2804), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.2806 = f32[128]{0} convert(f32[128]{0} %divide.2805), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -3252,14 +3608,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2832 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2833 = f32[] convert(f32[] %constant.2832), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2838 = f32[256]{0} reduce(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831, f32[] %convert.2833), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2834, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2839 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2840 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2841 = u32[] multiply(u32[] %get-dimension-size.2839, u32[] %get-dimension-size.2840), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2842 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2843 = u32[] multiply(u32[] %multiply.2841, u32[] %get-dimension-size.2842), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2844 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2845 = u32[] multiply(u32[] %multiply.2843, u32[] %get-dimension-size.2844), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2846 = f32[] convert(u32[] %multiply.2845), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2839 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2840 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2841 = s32[] multiply(s32[] %get-dimension-size.2839, s32[] %get-dimension-size.2840), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2842 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2843 = s32[] multiply(s32[] %multiply.2841, s32[] %get-dimension-size.2842), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2844 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2831), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2845 = s32[] multiply(s32[] %multiply.2843, s32[] %get-dimension-size.2844), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2846 = f32[] convert(s32[] %multiply.2845), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2847 = f32[256]{0} broadcast(f32[] %convert.2846), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2848 = f32[256]{0} divide(f32[256]{0} %reduce.2838, f32[256]{0} %broadcast.2847), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2849 = f32[256]{0} convert(f32[256]{0} %divide.2848), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3272,14 +3628,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2856 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2857 = f32[] convert(f32[] %constant.2856), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2862 = f32[256]{0} reduce(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855, f32[] %convert.2857), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2858, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2863 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2864 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2865 = u32[] multiply(u32[] %get-dimension-size.2863, u32[] %get-dimension-size.2864), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2866 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2867 = u32[] multiply(u32[] %multiply.2865, u32[] %get-dimension-size.2866), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2868 = u32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2869 = u32[] multiply(u32[] %multiply.2867, u32[] %get-dimension-size.2868), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2870 = f32[] convert(u32[] %multiply.2869), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2863 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2864 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2865 = s32[] multiply(s32[] %get-dimension-size.2863, s32[] %get-dimension-size.2864), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2866 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2867 = s32[] multiply(s32[] %multiply.2865, s32[] %get-dimension-size.2866), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2868 = s32[] get-dimension-size(f32[1,4,7,7,256]{4,3,2,1,0} %convert.2855), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2869 = s32[] multiply(s32[] %multiply.2867, s32[] %get-dimension-size.2868), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2870 = f32[] convert(s32[] %multiply.2869), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2871 = f32[256]{0} broadcast(f32[] %convert.2870), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2872 = f32[256]{0} divide(f32[256]{0} %reduce.2862, f32[256]{0} %broadcast.2871), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2873 = f32[256]{0} convert(f32[256]{0} %divide.2872), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3307,14 +3663,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2889 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2890 = f32[] convert(f32[] %constant.2889), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.2895 = f32[160]{0} reduce(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888, f32[] %convert.2890), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.2891, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2896 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2897 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2898 = u32[] multiply(u32[] %get-dimension-size.2896, u32[] %get-dimension-size.2897), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2899 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2900 = u32[] multiply(u32[] %multiply.2898, u32[] %get-dimension-size.2899), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2901 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.2902 = u32[] multiply(u32[] %multiply.2900, u32[] %get-dimension-size.2901), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.2903 = f32[] convert(u32[] %multiply.2902), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2896 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2897 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2898 = s32[] multiply(s32[] %get-dimension-size.2896, s32[] %get-dimension-size.2897), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2899 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2900 = s32[] multiply(s32[] %multiply.2898, s32[] %get-dimension-size.2899), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2901 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2888), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.2902 = s32[] multiply(s32[] %multiply.2900, s32[] %get-dimension-size.2901), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.2903 = f32[] convert(s32[] %multiply.2902), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.2904 = f32[160]{0} broadcast(f32[] %convert.2903), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.2905 = f32[160]{0} divide(f32[160]{0} %reduce.2895, f32[160]{0} %broadcast.2904), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.2906 = f32[160]{0} convert(f32[160]{0} %divide.2905), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3327,14 +3683,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2913 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2914 = f32[] convert(f32[] %constant.2913), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.2919 = f32[160]{0} reduce(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912, f32[] %convert.2914), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.2915, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2920 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2921 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2922 = u32[] multiply(u32[] %get-dimension-size.2920, u32[] %get-dimension-size.2921), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2923 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2924 = u32[] multiply(u32[] %multiply.2922, u32[] %get-dimension-size.2923), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2925 = u32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.2926 = u32[] multiply(u32[] %multiply.2924, u32[] %get-dimension-size.2925), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.2927 = f32[] convert(u32[] %multiply.2926), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2920 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2921 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2922 = s32[] multiply(s32[] %get-dimension-size.2920, s32[] %get-dimension-size.2921), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2923 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2924 = s32[] multiply(s32[] %multiply.2922, s32[] %get-dimension-size.2923), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2925 = s32[] get-dimension-size(f32[1,4,7,7,160]{4,3,2,1,0} %convert.2912), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.2926 = s32[] multiply(s32[] %multiply.2924, s32[] %get-dimension-size.2925), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.2927 = f32[] convert(s32[] %multiply.2926), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.2928 = f32[160]{0} broadcast(f32[] %convert.2927), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.2929 = f32[160]{0} divide(f32[160]{0} %reduce.2919, f32[160]{0} %broadcast.2928), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.2930 = f32[160]{0} convert(f32[160]{0} %divide.2929), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3357,14 +3713,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2949 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2950 = f32[] convert(f32[] %constant.2949), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.2955 = f32[320]{0} reduce(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948, f32[] %convert.2950), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.2951, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2956 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2957 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2958 = u32[] multiply(u32[] %get-dimension-size.2956, u32[] %get-dimension-size.2957), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2959 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2960 = u32[] multiply(u32[] %multiply.2958, u32[] %get-dimension-size.2959), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.2961 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.2962 = u32[] multiply(u32[] %multiply.2960, u32[] %get-dimension-size.2961), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.2963 = f32[] convert(u32[] %multiply.2962), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2956 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2957 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2958 = s32[] multiply(s32[] %get-dimension-size.2956, s32[] %get-dimension-size.2957), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2959 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2960 = s32[] multiply(s32[] %multiply.2958, s32[] %get-dimension-size.2959), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.2961 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2948), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.2962 = s32[] multiply(s32[] %multiply.2960, s32[] %get-dimension-size.2961), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.2963 = f32[] convert(s32[] %multiply.2962), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.2964 = f32[320]{0} broadcast(f32[] %convert.2963), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.2965 = f32[320]{0} divide(f32[320]{0} %reduce.2955, f32[320]{0} %broadcast.2964), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.2966 = f32[320]{0} convert(f32[320]{0} %divide.2965), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -3377,14 +3733,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.2973 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2974 = f32[] convert(f32[] %constant.2973), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.2979 = f32[320]{0} reduce(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972, f32[] %convert.2974), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.2975, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2980 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2981 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2982 = u32[] multiply(u32[] %get-dimension-size.2980, u32[] %get-dimension-size.2981), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2983 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2984 = u32[] multiply(u32[] %multiply.2982, u32[] %get-dimension-size.2983), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.2985 = u32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.2986 = u32[] multiply(u32[] %multiply.2984, u32[] %get-dimension-size.2985), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.2987 = f32[] convert(u32[] %multiply.2986), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2980 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2981 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2982 = s32[] multiply(s32[] %get-dimension-size.2980, s32[] %get-dimension-size.2981), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2983 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2984 = s32[] multiply(s32[] %multiply.2982, s32[] %get-dimension-size.2983), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.2985 = s32[] get-dimension-size(f32[1,4,7,7,320]{4,3,2,1,0} %convert.2972), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.2986 = s32[] multiply(s32[] %multiply.2984, s32[] %get-dimension-size.2985), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.2987 = f32[] convert(s32[] %multiply.2986), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.2988 = f32[320]{0} broadcast(f32[] %convert.2987), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.2989 = f32[320]{0} divide(f32[320]{0} %reduce.2979, f32[320]{0} %broadcast.2988), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.2990 = f32[320]{0} convert(f32[320]{0} %divide.2989), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -3412,14 +3768,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3006 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3007 = f32[] convert(f32[] %constant.3006), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3012 = f32[32]{0} reduce(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005, f32[] %convert.3007), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.3008, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3013 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3014 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3015 = u32[] multiply(u32[] %get-dimension-size.3013, u32[] %get-dimension-size.3014), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3016 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3017 = u32[] multiply(u32[] %multiply.3015, u32[] %get-dimension-size.3016), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3018 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3019 = u32[] multiply(u32[] %multiply.3017, u32[] %get-dimension-size.3018), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3020 = f32[] convert(u32[] %multiply.3019), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3013 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3014 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3015 = s32[] multiply(s32[] %get-dimension-size.3013, s32[] %get-dimension-size.3014), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3016 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3017 = s32[] multiply(s32[] %multiply.3015, s32[] %get-dimension-size.3016), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3018 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3005), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3019 = s32[] multiply(s32[] %multiply.3017, s32[] %get-dimension-size.3018), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3020 = f32[] convert(s32[] %multiply.3019), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3021 = f32[32]{0} broadcast(f32[] %convert.3020), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.3022 = f32[32]{0} divide(f32[32]{0} %reduce.3012, f32[32]{0} %broadcast.3021), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3023 = f32[32]{0} convert(f32[32]{0} %divide.3022), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3432,14 +3788,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3030 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3031 = f32[] convert(f32[] %constant.3030), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3036 = f32[32]{0} reduce(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029, f32[] %convert.3031), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.3032, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3037 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3038 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3039 = u32[] multiply(u32[] %get-dimension-size.3037, u32[] %get-dimension-size.3038), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3040 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3041 = u32[] multiply(u32[] %multiply.3039, u32[] %get-dimension-size.3040), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3042 = u32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3043 = u32[] multiply(u32[] %multiply.3041, u32[] %get-dimension-size.3042), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3044 = f32[] convert(u32[] %multiply.3043), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3037 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3038 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3039 = s32[] multiply(s32[] %get-dimension-size.3037, s32[] %get-dimension-size.3038), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3040 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3041 = s32[] multiply(s32[] %multiply.3039, s32[] %get-dimension-size.3040), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3042 = s32[] get-dimension-size(f32[1,4,7,7,32]{4,3,2,1,0} %convert.3029), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3043 = s32[] multiply(s32[] %multiply.3041, s32[] %get-dimension-size.3042), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3044 = f32[] convert(s32[] %multiply.3043), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3045 = f32[32]{0} broadcast(f32[] %convert.3044), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.3046 = f32[32]{0} divide(f32[32]{0} %reduce.3036, f32[32]{0} %broadcast.3045), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3047 = f32[32]{0} convert(f32[32]{0} %divide.3046), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3462,14 +3818,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3066 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
   %convert.3067 = f32[] convert(f32[] %constant.3066), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
   %reduce.3072 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065, f32[] %convert.3067), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_batch_norm_normalize_moments_mean-reduction.3068, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3073 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3074 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3075 = u32[] multiply(u32[] %get-dimension-size.3073, u32[] %get-dimension-size.3074), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3076 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3077 = u32[] multiply(u32[] %multiply.3075, u32[] %get-dimension-size.3076), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3078 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3079 = u32[] multiply(u32[] %multiply.3077, u32[] %get-dimension-size.3078), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
-  %convert.3080 = f32[] convert(u32[] %multiply.3079), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3073 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3074 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3075 = s32[] multiply(s32[] %get-dimension-size.3073, s32[] %get-dimension-size.3074), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3076 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3077 = s32[] multiply(s32[] %multiply.3075, s32[] %get-dimension-size.3076), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3078 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3065), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3079 = s32[] multiply(s32[] %multiply.3077, s32[] %get-dimension-size.3078), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
+  %convert.3080 = f32[] convert(s32[] %multiply.3079), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.3081 = f32[128]{0} broadcast(f32[] %convert.3080), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
   %divide.3082 = f32[128]{0} divide(f32[128]{0} %reduce.3072, f32[128]{0} %broadcast.3081), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
   %convert.3083 = f32[128]{0} convert(f32[128]{0} %divide.3082), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/mean"}
@@ -3482,14 +3838,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3090 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
   %convert.3091 = f32[] convert(f32[] %constant.3090), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
   %reduce.3096 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089, f32[] %convert.3091), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_batch_norm_normalize_moments_variance-reduction.3092, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3097 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3098 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3099 = u32[] multiply(u32[] %get-dimension-size.3097, u32[] %get-dimension-size.3098), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3100 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3101 = u32[] multiply(u32[] %multiply.3099, u32[] %get-dimension-size.3100), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3102 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3103 = u32[] multiply(u32[] %multiply.3101, u32[] %get-dimension-size.3102), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
-  %convert.3104 = f32[] convert(u32[] %multiply.3103), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3097 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3098 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3099 = s32[] multiply(s32[] %get-dimension-size.3097, s32[] %get-dimension-size.3098), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3100 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3101 = s32[] multiply(s32[] %multiply.3099, s32[] %get-dimension-size.3100), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3102 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3089), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3103 = s32[] multiply(s32[] %multiply.3101, s32[] %get-dimension-size.3102), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
+  %convert.3104 = f32[] convert(s32[] %multiply.3103), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.3105 = f32[128]{0} broadcast(f32[] %convert.3104), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
   %divide.3106 = f32[128]{0} divide(f32[128]{0} %reduce.3096, f32[128]{0} %broadcast.3105), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
   %convert.3107 = f32[128]{0} convert(f32[128]{0} %divide.3106), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/normalize_moments/variance"}
@@ -3515,14 +3871,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3129 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.3130 = f32[] convert(f32[] %constant.3129), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3135 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128, f32[] %convert.3130), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.3131, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3136 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3137 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3138 = u32[] multiply(u32[] %get-dimension-size.3136, u32[] %get-dimension-size.3137), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3139 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3140 = u32[] multiply(u32[] %multiply.3138, u32[] %get-dimension-size.3139), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3141 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3142 = u32[] multiply(u32[] %multiply.3140, u32[] %get-dimension-size.3141), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3143 = f32[] convert(u32[] %multiply.3142), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3136 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3137 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3138 = s32[] multiply(s32[] %get-dimension-size.3136, s32[] %get-dimension-size.3137), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3139 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3140 = s32[] multiply(s32[] %multiply.3138, s32[] %get-dimension-size.3139), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3141 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3128), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3142 = s32[] multiply(s32[] %multiply.3140, s32[] %get-dimension-size.3141), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3143 = f32[] convert(s32[] %multiply.3142), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3144 = f32[128]{0} broadcast(f32[] %convert.3143), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.3145 = f32[128]{0} divide(f32[128]{0} %reduce.3135, f32[128]{0} %broadcast.3144), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.3146 = f32[128]{0} convert(f32[128]{0} %divide.3145), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -3535,14 +3891,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3153 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.3154 = f32[] convert(f32[] %constant.3153), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3159 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152, f32[] %convert.3154), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.3155, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3160 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3161 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3162 = u32[] multiply(u32[] %get-dimension-size.3160, u32[] %get-dimension-size.3161), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3163 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3164 = u32[] multiply(u32[] %multiply.3162, u32[] %get-dimension-size.3163), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3165 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3166 = u32[] multiply(u32[] %multiply.3164, u32[] %get-dimension-size.3165), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3167 = f32[] convert(u32[] %multiply.3166), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3160 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3161 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3162 = s32[] multiply(s32[] %get-dimension-size.3160, s32[] %get-dimension-size.3161), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3163 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3164 = s32[] multiply(s32[] %multiply.3162, s32[] %get-dimension-size.3163), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3165 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3152), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3166 = s32[] multiply(s32[] %multiply.3164, s32[] %get-dimension-size.3165), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3167 = f32[] convert(s32[] %multiply.3166), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3168 = f32[128]{0} broadcast(f32[] %convert.3167), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.3169 = f32[128]{0} divide(f32[128]{0} %reduce.3159, f32[128]{0} %broadcast.3168), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.3170 = f32[128]{0} convert(f32[128]{0} %divide.3169), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -3566,14 +3922,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3190 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3191 = f32[] convert(f32[] %constant.3190), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3196 = f32[384]{0} reduce(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189, f32[] %convert.3191), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.3192, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3197 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3198 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3199 = u32[] multiply(u32[] %get-dimension-size.3197, u32[] %get-dimension-size.3198), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3200 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3201 = u32[] multiply(u32[] %multiply.3199, u32[] %get-dimension-size.3200), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3202 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3203 = u32[] multiply(u32[] %multiply.3201, u32[] %get-dimension-size.3202), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3204 = f32[] convert(u32[] %multiply.3203), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3197 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3198 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3199 = s32[] multiply(s32[] %get-dimension-size.3197, s32[] %get-dimension-size.3198), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3200 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3201 = s32[] multiply(s32[] %multiply.3199, s32[] %get-dimension-size.3200), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3202 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3189), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3203 = s32[] multiply(s32[] %multiply.3201, s32[] %get-dimension-size.3202), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3204 = f32[] convert(s32[] %multiply.3203), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3205 = f32[384]{0} broadcast(f32[] %convert.3204), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.3206 = f32[384]{0} divide(f32[384]{0} %reduce.3196, f32[384]{0} %broadcast.3205), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3207 = f32[384]{0} convert(f32[384]{0} %divide.3206), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3586,14 +3942,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3214 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3215 = f32[] convert(f32[] %constant.3214), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3220 = f32[384]{0} reduce(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213, f32[] %convert.3215), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.3216, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3221 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3222 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3223 = u32[] multiply(u32[] %get-dimension-size.3221, u32[] %get-dimension-size.3222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3224 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3225 = u32[] multiply(u32[] %multiply.3223, u32[] %get-dimension-size.3224), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3226 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3227 = u32[] multiply(u32[] %multiply.3225, u32[] %get-dimension-size.3226), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3228 = f32[] convert(u32[] %multiply.3227), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3221 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3222 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3223 = s32[] multiply(s32[] %get-dimension-size.3221, s32[] %get-dimension-size.3222), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3224 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3225 = s32[] multiply(s32[] %multiply.3223, s32[] %get-dimension-size.3224), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3226 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3213), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3227 = s32[] multiply(s32[] %multiply.3225, s32[] %get-dimension-size.3226), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3228 = f32[] convert(s32[] %multiply.3227), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3229 = f32[384]{0} broadcast(f32[] %convert.3228), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.3230 = f32[384]{0} divide(f32[384]{0} %reduce.3220, f32[384]{0} %broadcast.3229), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3231 = f32[384]{0} convert(f32[384]{0} %divide.3230), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3621,14 +3977,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3253 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3254 = f32[] convert(f32[] %constant.3253), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3259 = f32[192]{0} reduce(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252, f32[] %convert.3254), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.3255, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3260 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3261 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3262 = u32[] multiply(u32[] %get-dimension-size.3260, u32[] %get-dimension-size.3261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3263 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3264 = u32[] multiply(u32[] %multiply.3262, u32[] %get-dimension-size.3263), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3265 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3266 = u32[] multiply(u32[] %multiply.3264, u32[] %get-dimension-size.3265), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3267 = f32[] convert(u32[] %multiply.3266), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3260 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3261 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3262 = s32[] multiply(s32[] %get-dimension-size.3260, s32[] %get-dimension-size.3261), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3263 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3264 = s32[] multiply(s32[] %multiply.3262, s32[] %get-dimension-size.3263), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3265 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3252), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3266 = s32[] multiply(s32[] %multiply.3264, s32[] %get-dimension-size.3265), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3267 = f32[] convert(s32[] %multiply.3266), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3268 = f32[192]{0} broadcast(f32[] %convert.3267), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.3269 = f32[192]{0} divide(f32[192]{0} %reduce.3259, f32[192]{0} %broadcast.3268), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3270 = f32[192]{0} convert(f32[192]{0} %divide.3269), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3641,14 +3997,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3277 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3278 = f32[] convert(f32[] %constant.3277), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3283 = f32[192]{0} reduce(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276, f32[] %convert.3278), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.3279, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3284 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3285 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3286 = u32[] multiply(u32[] %get-dimension-size.3284, u32[] %get-dimension-size.3285), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3287 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3288 = u32[] multiply(u32[] %multiply.3286, u32[] %get-dimension-size.3287), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3289 = u32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3290 = u32[] multiply(u32[] %multiply.3288, u32[] %get-dimension-size.3289), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3291 = f32[] convert(u32[] %multiply.3290), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3284 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3285 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3286 = s32[] multiply(s32[] %get-dimension-size.3284, s32[] %get-dimension-size.3285), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3287 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3288 = s32[] multiply(s32[] %multiply.3286, s32[] %get-dimension-size.3287), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3289 = s32[] get-dimension-size(f32[1,4,7,7,192]{4,3,2,1,0} %convert.3276), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3290 = s32[] multiply(s32[] %multiply.3288, s32[] %get-dimension-size.3289), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3291 = f32[] convert(s32[] %multiply.3290), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3292 = f32[192]{0} broadcast(f32[] %convert.3291), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.3293 = f32[192]{0} divide(f32[192]{0} %reduce.3283, f32[192]{0} %broadcast.3292), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3294 = f32[192]{0} convert(f32[192]{0} %divide.3293), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3671,14 +4027,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3313 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.3314 = f32[] convert(f32[] %constant.3313), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.3319 = f32[384]{0} reduce(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312, f32[] %convert.3314), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.3315, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3320 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3321 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3322 = u32[] multiply(u32[] %get-dimension-size.3320, u32[] %get-dimension-size.3321), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3323 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3324 = u32[] multiply(u32[] %multiply.3322, u32[] %get-dimension-size.3323), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3325 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3326 = u32[] multiply(u32[] %multiply.3324, u32[] %get-dimension-size.3325), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.3327 = f32[] convert(u32[] %multiply.3326), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3320 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3321 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3322 = s32[] multiply(s32[] %get-dimension-size.3320, s32[] %get-dimension-size.3321), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3323 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3324 = s32[] multiply(s32[] %multiply.3322, s32[] %get-dimension-size.3323), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3325 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3312), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3326 = s32[] multiply(s32[] %multiply.3324, s32[] %get-dimension-size.3325), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.3327 = f32[] convert(s32[] %multiply.3326), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.3328 = f32[384]{0} broadcast(f32[] %convert.3327), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.3329 = f32[384]{0} divide(f32[384]{0} %reduce.3319, f32[384]{0} %broadcast.3328), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.3330 = f32[384]{0} convert(f32[384]{0} %divide.3329), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -3691,14 +4047,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3337 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.3338 = f32[] convert(f32[] %constant.3337), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.3343 = f32[384]{0} reduce(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336, f32[] %convert.3338), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.3339, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3344 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3345 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3346 = u32[] multiply(u32[] %get-dimension-size.3344, u32[] %get-dimension-size.3345), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3347 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3348 = u32[] multiply(u32[] %multiply.3346, u32[] %get-dimension-size.3347), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3349 = u32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3350 = u32[] multiply(u32[] %multiply.3348, u32[] %get-dimension-size.3349), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.3351 = f32[] convert(u32[] %multiply.3350), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3344 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3345 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3346 = s32[] multiply(s32[] %get-dimension-size.3344, s32[] %get-dimension-size.3345), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3347 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3348 = s32[] multiply(s32[] %multiply.3346, s32[] %get-dimension-size.3347), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3349 = s32[] get-dimension-size(f32[1,4,7,7,384]{4,3,2,1,0} %convert.3336), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3350 = s32[] multiply(s32[] %multiply.3348, s32[] %get-dimension-size.3349), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.3351 = f32[] convert(s32[] %multiply.3350), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.3352 = f32[384]{0} broadcast(f32[] %convert.3351), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.3353 = f32[384]{0} divide(f32[384]{0} %reduce.3343, f32[384]{0} %broadcast.3352), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.3354 = f32[384]{0} convert(f32[384]{0} %divide.3353), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -3726,14 +4082,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3370 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3371 = f32[] convert(f32[] %constant.3370), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3376 = f32[48]{0} reduce(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369, f32[] %convert.3371), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_mean-reduction.3372, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3377 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3378 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3379 = u32[] multiply(u32[] %get-dimension-size.3377, u32[] %get-dimension-size.3378), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3380 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3381 = u32[] multiply(u32[] %multiply.3379, u32[] %get-dimension-size.3380), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3382 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3383 = u32[] multiply(u32[] %multiply.3381, u32[] %get-dimension-size.3382), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3384 = f32[] convert(u32[] %multiply.3383), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3377 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3378 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3379 = s32[] multiply(s32[] %get-dimension-size.3377, s32[] %get-dimension-size.3378), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3380 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3381 = s32[] multiply(s32[] %multiply.3379, s32[] %get-dimension-size.3380), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3382 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3369), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3383 = s32[] multiply(s32[] %multiply.3381, s32[] %get-dimension-size.3382), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3384 = f32[] convert(s32[] %multiply.3383), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3385 = f32[48]{0} broadcast(f32[] %convert.3384), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %divide.3386 = f32[48]{0} divide(f32[48]{0} %reduce.3376, f32[48]{0} %broadcast.3385), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
   %convert.3387 = f32[48]{0} convert(f32[48]{0} %divide.3386), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/mean"}
@@ -3746,14 +4102,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3394 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3395 = f32[] convert(f32[] %constant.3394), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3400 = f32[48]{0} reduce(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393, f32[] %convert.3395), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_batch_norm_normalize_moments_variance-reduction.3396, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3401 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3402 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3403 = u32[] multiply(u32[] %get-dimension-size.3401, u32[] %get-dimension-size.3402), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3404 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3405 = u32[] multiply(u32[] %multiply.3403, u32[] %get-dimension-size.3404), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3406 = u32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3407 = u32[] multiply(u32[] %multiply.3405, u32[] %get-dimension-size.3406), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3408 = f32[] convert(u32[] %multiply.3407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3401 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3402 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3403 = s32[] multiply(s32[] %get-dimension-size.3401, s32[] %get-dimension-size.3402), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3404 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3405 = s32[] multiply(s32[] %multiply.3403, s32[] %get-dimension-size.3404), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3406 = s32[] get-dimension-size(f32[1,4,7,7,48]{4,3,2,1,0} %convert.3393), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3407 = s32[] multiply(s32[] %multiply.3405, s32[] %get-dimension-size.3406), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3408 = f32[] convert(s32[] %multiply.3407), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3409 = f32[48]{0} broadcast(f32[] %convert.3408), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %divide.3410 = f32[48]{0} divide(f32[48]{0} %reduce.3400, f32[48]{0} %broadcast.3409), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
   %convert.3411 = f32[48]{0} convert(f32[48]{0} %divide.3410), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/normalize_moments/variance"}
@@ -3776,14 +4132,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3430 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.3431 = f32[] convert(f32[] %constant.3430), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %reduce.3436 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429, f32[] %convert.3431), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_mean-reduction.3432, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3437 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3438 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3439 = u32[] multiply(u32[] %get-dimension-size.3437, u32[] %get-dimension-size.3438), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3440 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3441 = u32[] multiply(u32[] %multiply.3439, u32[] %get-dimension-size.3440), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3442 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %multiply.3443 = u32[] multiply(u32[] %multiply.3441, u32[] %get-dimension-size.3442), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
-  %convert.3444 = f32[] convert(u32[] %multiply.3443), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3437 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3438 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3439 = s32[] multiply(s32[] %get-dimension-size.3437, s32[] %get-dimension-size.3438), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3440 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3441 = s32[] multiply(s32[] %multiply.3439, s32[] %get-dimension-size.3440), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3442 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3429), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %multiply.3443 = s32[] multiply(s32[] %multiply.3441, s32[] %get-dimension-size.3442), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
+  %convert.3444 = f32[] convert(s32[] %multiply.3443), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %broadcast.3445 = f32[128]{0} broadcast(f32[] %convert.3444), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %divide.3446 = f32[128]{0} divide(f32[128]{0} %reduce.3436, f32[128]{0} %broadcast.3445), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
   %convert.3447 = f32[128]{0} convert(f32[128]{0} %divide.3446), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/mean"}
@@ -3796,14 +4152,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3454 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.3455 = f32[] convert(f32[] %constant.3454), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %reduce.3460 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453, f32[] %convert.3455), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_batch_norm_normalize_moments_variance-reduction.3456, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3461 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3462 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3463 = u32[] multiply(u32[] %get-dimension-size.3461, u32[] %get-dimension-size.3462), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3464 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3465 = u32[] multiply(u32[] %multiply.3463, u32[] %get-dimension-size.3464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3466 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %multiply.3467 = u32[] multiply(u32[] %multiply.3465, u32[] %get-dimension-size.3466), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
-  %convert.3468 = f32[] convert(u32[] %multiply.3467), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3461 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3462 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3463 = s32[] multiply(s32[] %get-dimension-size.3461, s32[] %get-dimension-size.3462), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3464 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3465 = s32[] multiply(s32[] %multiply.3463, s32[] %get-dimension-size.3464), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3466 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3453), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %multiply.3467 = s32[] multiply(s32[] %multiply.3465, s32[] %get-dimension-size.3466), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
+  %convert.3468 = f32[] convert(s32[] %multiply.3467), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %broadcast.3469 = f32[128]{0} broadcast(f32[] %convert.3468), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %divide.3470 = f32[128]{0} divide(f32[128]{0} %reduce.3460, f32[128]{0} %broadcast.3469), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
   %convert.3471 = f32[128]{0} convert(f32[128]{0} %divide.3470), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/normalize_moments/variance"}
@@ -3829,14 +4185,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3487 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.3488 = f32[] convert(f32[] %constant.3487), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %reduce.3493 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486, f32[] %convert.3488), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_mean-reduction.3489, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3494 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3495 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3496 = u32[] multiply(u32[] %get-dimension-size.3494, u32[] %get-dimension-size.3495), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3497 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3498 = u32[] multiply(u32[] %multiply.3496, u32[] %get-dimension-size.3497), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %get-dimension-size.3499 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %multiply.3500 = u32[] multiply(u32[] %multiply.3498, u32[] %get-dimension-size.3499), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
-  %convert.3501 = f32[] convert(u32[] %multiply.3500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3494 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3495 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3496 = s32[] multiply(s32[] %get-dimension-size.3494, s32[] %get-dimension-size.3495), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3497 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3498 = s32[] multiply(s32[] %multiply.3496, s32[] %get-dimension-size.3497), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %get-dimension-size.3499 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3486), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %multiply.3500 = s32[] multiply(s32[] %multiply.3498, s32[] %get-dimension-size.3499), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
+  %convert.3501 = f32[] convert(s32[] %multiply.3500), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %broadcast.3502 = f32[128]{0} broadcast(f32[] %convert.3501), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %divide.3503 = f32[128]{0} divide(f32[128]{0} %reduce.3493, f32[128]{0} %broadcast.3502), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
   %convert.3504 = f32[128]{0} convert(f32[128]{0} %divide.3503), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/mean"}
@@ -3849,14 +4205,14 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3511 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.3512 = f32[] convert(f32[] %constant.3511), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %reduce.3517 = f32[128]{0} reduce(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510, f32[] %convert.3512), dimensions={0,1,2,3}, to_apply=%RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_batch_norm_normalize_moments_variance-reduction.3513, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3518 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3519 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3520 = u32[] multiply(u32[] %get-dimension-size.3518, u32[] %get-dimension-size.3519), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3521 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3522 = u32[] multiply(u32[] %multiply.3520, u32[] %get-dimension-size.3521), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %get-dimension-size.3523 = u32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %multiply.3524 = u32[] multiply(u32[] %multiply.3522, u32[] %get-dimension-size.3523), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
-  %convert.3525 = f32[] convert(u32[] %multiply.3524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3518 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={0}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3519 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3520 = s32[] multiply(s32[] %get-dimension-size.3518, s32[] %get-dimension-size.3519), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3521 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={2}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3522 = s32[] multiply(s32[] %multiply.3520, s32[] %get-dimension-size.3521), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %get-dimension-size.3523 = s32[] get-dimension-size(f32[1,4,7,7,128]{4,3,2,1,0} %convert.3510), dimensions={3}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %multiply.3524 = s32[] multiply(s32[] %multiply.3522, s32[] %get-dimension-size.3523), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
+  %convert.3525 = f32[] convert(s32[] %multiply.3524), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %broadcast.3526 = f32[128]{0} broadcast(f32[] %convert.3525), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %divide.3527 = f32[128]{0} divide(f32[128]{0} %reduce.3517, f32[128]{0} %broadcast.3526), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
   %convert.3528 = f32[128]{0} convert(f32[128]{0} %divide.3527), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/normalize_moments/variance"}
@@ -3891,8 +4247,8 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
   %constant.3565 = f32[] constant(0), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
   %convert.3566 = f32[] convert(f32[] %constant.3565), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
   %reduce.3571 = f32[1,400]{1,0} reduce(f32[1,3,400]{2,1,0} %convert.3564, f32[] %convert.3566), dimensions={1}, to_apply=%RGB_inception_i3d_Mean-reduction.3567, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
-  %get-dimension-size.3572 = u32[] get-dimension-size(f32[1,3,400]{2,1,0} %convert.3564), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
-  %convert.3573 = f32[] convert(u32[] %get-dimension-size.3572), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
+  %get-dimension-size.3572 = s32[] get-dimension-size(f32[1,3,400]{2,1,0} %convert.3564), dimensions={1}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
+  %convert.3573 = f32[] convert(s32[] %get-dimension-size.3572), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
   %broadcast.3574 = f32[1,400]{1,0} broadcast(f32[] %convert.3573), dimensions={}, metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
   %divide.3575 = f32[1,400]{1,0} divide(f32[1,400]{1,0} %reduce.3571, f32[1,400]{1,0} %broadcast.3574), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
   %convert.3576 = f32[1,400]{1,0} convert(f32[1,400]{1,0} %divide.3575), metadata={op_type="Mean" op_name="RGB/inception_i3d/Mean"}
@@ -3904,15 +4260,13 @@ ENTRY %cluster_1__XlaCompiledKernel_true__XlaNumConstantArgs_125__XlaNumResource
 
   hlo_module->ParseHloStringAndVerifyModule(hlo_text); 
 
-  CompileAndCheck(std::move(hlo_module), spec.filecheck_lines);
+  CompileAndCheck(std::move(hlo_module), spec.filecheck_lines, testcase_pairs);
 }
 
 std::vector<I3DTestSpec> GetI3DTestCases() {
   std::vector<I3DTestSpec> result;
   result.push_back(
-      {F32, R"(CHECK: func @hlo_module(%arg0: tensor<128x100xf32>, %arg1: tensor<f32>, %arg2: tensor<64x128xf32>, %arg3: tensor<f32>, %arg4: tensor<64xf32>, %arg5: tensor<3x3x32x64xf32>, %arg6: tensor<f32>, %arg7: tensor<32xf32>, %arg8: tensor<3x3x1x32xf32>, %arg9: tensor<1x224x224x1xf32>, %arg10: tensor<128xf32>, %arg11: tensor<100xf32>) -> tensor<1x219x219x100xf32>)"});
-  //result.push_back(
-  //    {F64, R"(CHECK: func @hlo_module(%arg0: tensor<1x3xf32>, %arg1: tensor<1x3xf32>) -> tensor<1x3xf32>)"});
+      {F32, R"(CHECK: func @hlo_module)"});
   return result;
 }
 
