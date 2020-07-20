@@ -89,6 +89,7 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
   std::vector<float> kernel_val = {1, 1, 1, //
                                    1, 0, 1, //
                                    1, 1, 1};
+
   std::vector<float> expected_val = {0.23, 0.23, 0.23, //
                                      0.17, 0.17, 0.17, //
                                      0.23, 0.23, 0.23};
