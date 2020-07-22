@@ -60,14 +60,26 @@ class PlaidMLResNeXTOperationTest
       TensorBuffers exp;
 
       auto program_inputs = program->inputs();
+      auto tcp_inputs = pair.first;
+
+      if (tcp_inputs.size() != program_inputs.size()) {
+        VLOG(1) << "Found mismatch in input sizes: tcp " << tcp_inputs.size() << " program " << program_inputs.size();
+      }
 
       for (auto i = 0; i < program_inputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseInput " << i;
         inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
       }
 
       auto program_outputs = program->outputs();
+      auto tcp_outputs = pair.second;
+
+      if (tcp_outputs.size() != program_outputs.size()) {
+        VLOG(1) << "Found mismatch in output sizes: tcp " << tcp_outputs.size() << " program " << program_outputs.size();
+      }
 
       for (auto i = 0; i < program_outputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseOutput " << i;
         exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
       }
 
@@ -76,15 +88,13 @@ class PlaidMLResNeXTOperationTest
       checkProgram(*program, inp, exp);
 
     }
-
     return Status::OK();
-
   }
 };
 
 TEST_P(PlaidMLResNeXTOperationTest, SimpleResNeXT) {
 
-TestCaseVal ResNeXt50_WeightsInputs = {{0}, ::weights::stage4_unit3_bn3_mean, ::weights::stage4_unit3_bn3_scale, ::weights::stage4_unit3_bn3_var, {2e-05}, //
+TestCaseVal ResNeXt50_WeightsInputs = {{0}, {0}, ::weights::stage4_unit3_bn3_mean, ::weights::stage4_unit3_bn3_scale, ::weights::stage4_unit3_bn3_var, {2e-05}, //
  ::weights::stage4_unit3_bn3_bias, ::weights::stage4_unit3_conv3_weight, {0}, ::weights::stage4_unit3_bn2_mean, ::weights::stage4_unit3_bn2_scale, {2e-05}, //
  ::weights::stage4_unit3_bn2_var, ::weights::stage4_unit3_bn2_bias, ::weights::stage4_unit3_conv2_weight, {0}, ::weights::stage4_unit3_bn1_mean, ::weights::stage4_unit3_bn1_scale, {2e-05}, //
  ::weights::stage4_unit3_bn1_var, ::weights::stage4_unit3_bn1_bias, ::weights::stage4_unit3_conv1_weight, {0}, ::weights::stage4_unit2_bn3_mean, ::weights::stage4_unit2_bn3_scale, {2e-05}, //
@@ -136,7 +146,7 @@ TestCaseVal ResNeXt50_WeightsInputs = {{0}, ::weights::stage4_unit3_bn3_mean, ::
  ::weights::stage3_unit1_bn3_var, ::weights::stage3_unit1_bn3_bias, ::weights::stage3_unit1_conv3_weight, {0}, ::weights::stage3_unit1_bn2_mean, ::weights::stage3_unit1_bn2_scale, {2e-05}, //
  ::weights::stage3_unit1_bn2_var, ::weights::stage3_unit1_bn2_bias, ::weights::stage3_unit1_conv2_weight, {0}, ::weights::stage3_unit1_bn1_mean, ::weights::stage3_unit1_bn1_scale, {2e-05}, //
  ::weights::stage3_unit1_bn1_var, ::weights::stage3_unit1_bn1_bias, ::weights::stage3_unit1_conv1_weight, ::weights::stage4_unit1_bn3_mean, ::weights::stage4_unit1_bn3_scale, {2e-05}, //
- ::weights::stage4_unit1_bn3_var , ::weights::stage4_unit1_bn3_bias, ::weights::stage4_unit1_conv3_weight, {0}, ::weights::stage4_unit1_bn2_mean, ::weights::stage4_unit1_bn2_scale, {2e-05}, //
+ ::weights::stage4_unit1_bn3_var, ::weights::stage4_unit1_bn3_bias, ::weights::stage4_unit1_conv3_weight, {0}, ::weights::stage4_unit1_bn2_mean, ::weights::stage4_unit1_bn2_scale, {2e-05}, //
  ::weights::stage4_unit1_bn2_var, ::weights::stage4_unit1_bn2_bias, ::weights::stage4_unit1_conv2_weight, {0}, ::weights::stage4_unit1_bn1_mean, ::weights::stage4_unit1_bn1_scale, {2e-05}, //
  ::weights::stage4_unit1_bn1_var, ::weights::stage4_unit1_bn1_bias, ::weights::stage4_unit1_conv1_weight};
 
