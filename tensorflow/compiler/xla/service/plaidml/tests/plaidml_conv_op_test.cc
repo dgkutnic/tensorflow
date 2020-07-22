@@ -82,7 +82,8 @@ class PlaidMLConvOperationTest
   }
 
   Status CompileAndCheck(std::unique_ptr<HloModule> hlo_module,
-                         const string& filecheck_lines, const TestCaseVal& inputs, const TestCaseVal& outputs) {
+                         const string& filecheck_lines,
+                         const TestCasePairs& testcase_pairs) {
 
     auto program = CompileToProgram(std::move(hlo_module));
 
@@ -91,48 +92,63 @@ class PlaidMLConvOperationTest
     //TF_ASSERT_OK(fc_result.status());
     EXPECT_TRUE(fc_result.ValueOrDie());
 
-    VLOG(0) << "Evaluating results";
+    VLOG(2) << "Evaluating results";
 
-    VLOG(0) << "Ping 1";
-    TensorBuffers inp;
-    TensorBuffers exp;
-    VLOG(1) << "Ping 2";
-    auto program_inputs = program->inputs();
-    VLOG(1) << "Ping 3";
+    for (auto pair : testcase_pairs) {
 
-    for (auto i = 0; i < program_inputs.size(); i++) {
-      inp.insert(std::make_pair(program_inputs[i].tensor, inputs[i]));
+      TensorBuffers inp;
+      TensorBuffers exp;
+
+      auto program_inputs = program->inputs();
+      auto tcp_inputs = pair.first;
+
+      if (tcp_inputs.size() != program_inputs.size()) {
+        VLOG(1) << "Found mismatch in input sizes: tcp " << tcp_inputs.size() << " program " << program_inputs.size();
+      }
+
+      for (auto i = 0; i < program_inputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseInput " << i;
+        inp.insert(std::make_pair(program_inputs[i].tensor, pair.first[i]));
+      }
+
+      auto program_outputs = program->outputs();
+      auto tcp_outputs = pair.second;
+
+      if (tcp_outputs.size() != program_outputs.size()) {
+        VLOG(1) << "Found mismatch in output sizes: tcp " << tcp_outputs.size() << " program " << program_outputs.size();
+      }
+
+      for (auto i = 0; i < program_outputs.size(); i++) {
+        VLOG(1) << "Adding TestCaseOutput " << i;
+        exp.insert(std::make_pair(program_outputs[i].tensor, pair.second[i]));
+      }
+
+      VLOG(2) << "Calling checkProgram";
+
+      checkProgram(*program, inp, exp);
+
     }
-    VLOG(1) << "Ping 4";
-
-    auto program_outputs = program->outputs();
-
-    for (auto i = 0; i < program_outputs.size(); i++) {
-      exp.insert(std::make_pair(program_outputs[i].tensor, outputs[i]));
-    }
-
-    VLOG(0) << "Calling checkProgram";
-
-    checkProgram(*program, inp, exp);
-
     return Status::OK();
-
   }
 };
 
 TEST_P(PlaidMLConvOperationTest, VariedInputConvTest){
+  VLOG(0) << "Testing generated examples";
+
   for (std::size_t i = 0; i < conv_modules.size(); ++i) {
+    VLOG(0) << "Testing set "<< i;
     std::vector<float> input_val = conv_is[i];
-    VLOG(0) << "Input total length: " << input_val.size();
     std::vector<float> kernel_1 = conv_k1s[i];
-    VLOG(0) << "K1 total length: " << kernel_1.size();
     std::vector<float> kernel_2 = conv_k2s[i];
     std::vector<float> expected_val = conv_os[i];
+    std::vector<float> relu1 = {0};
+    std::vector<float> relu2 = {0};
     std::string module_text = conv_modules[i];
 
-    TestCaseVal inputs = {input_val, kernel_1, kernel_2};
+    TestCaseVal inputs = {relu2, kernel_2, relu1, kernel_1, input_val};
     TestCaseVal results = {expected_val};
-    //TestCasePairs testcase_pairs = {{inputs, results}};
+    
+    TestCasePairs testcase_pairs ={{inputs, results}};
 
     ConvTestSpec spec = GetParam();
 
@@ -143,7 +159,7 @@ TEST_P(PlaidMLConvOperationTest, VariedInputConvTest){
 
     hlo_module->ParseHloStringAndVerifyModule(module_text); 
 
-    CompileAndCheck(std::move(hlo_module), spec.filecheck_lines, inputs, results);
+    CompileAndCheck(std::move(hlo_module), spec.filecheck_lines, testcase_pairs);
   }
 }
 
@@ -230,8 +246,8 @@ std::vector<ConvTestSpec> GetConvTestCases() {
                     )#";
   result.push_back(
       {F32, check_str});
-  result.push_back(
-      {F64, check_str});
+  // result.push_back(
+  //     {F64, check_str});
   return result;
 }
 
