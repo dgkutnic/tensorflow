@@ -38,7 +38,7 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_conv_op_test",
-    srcs = ["plaidml_conv_op_test.cc"],
+    srcs = ["plaidml_conv_op_test.cc", "plaidml_conv_test_io.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",

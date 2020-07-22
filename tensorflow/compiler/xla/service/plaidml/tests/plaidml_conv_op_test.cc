@@ -8,6 +8,8 @@
 #include "absl/strings/str_cat.h"
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
+#include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_test_io.h"
+#include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/tests/filecheck.h"
 #include "tensorflow/compiler/xla/tests/test_utils.h"
@@ -74,11 +76,76 @@ class PlaidMLConvOperationTest
       checkProgram(*program, inp, exp);
 
     }
+ 
+    return Status::OK();
+
+  }
+
+  Status CompileAndCheck(std::unique_ptr<HloModule> hlo_module,
+                         const string& filecheck_lines, const TestCaseVal& inputs, const TestCaseVal& outputs) {
+
+    auto program = CompileToProgram(std::move(hlo_module));
+
+    StatusOr<bool> fc_result = RunFileCheck(program->str(), filecheck_lines);
+
+    //TF_ASSERT_OK(fc_result.status());
+    EXPECT_TRUE(fc_result.ValueOrDie());
+
+    VLOG(0) << "Evaluating results";
+
+    VLOG(0) << "Ping 1";
+    TensorBuffers inp;
+    TensorBuffers exp;
+    VLOG(1) << "Ping 2";
+    auto program_inputs = program->inputs();
+    VLOG(1) << "Ping 3";
+
+    for (auto i = 0; i < program_inputs.size(); i++) {
+      inp.insert(std::make_pair(program_inputs[i].tensor, inputs[i]));
+    }
+    VLOG(1) << "Ping 4";
+
+    auto program_outputs = program->outputs();
+
+    for (auto i = 0; i < program_outputs.size(); i++) {
+      exp.insert(std::make_pair(program_outputs[i].tensor, outputs[i]));
+    }
+
+    VLOG(0) << "Calling checkProgram";
+
+    checkProgram(*program, inp, exp);
 
     return Status::OK();
 
   }
 };
+
+TEST_P(PlaidMLConvOperationTest, VariedInputConvTest){
+  for (std::size_t i = 0; i < conv_modules.size(); ++i) {
+    std::vector<float> input_val = conv_is[i];
+    VLOG(0) << "Input total length: " << input_val.size();
+    std::vector<float> kernel_1 = conv_k1s[i];
+    VLOG(0) << "K1 total length: " << kernel_1.size();
+    std::vector<float> kernel_2 = conv_k2s[i];
+    std::vector<float> expected_val = conv_os[i];
+    std::string module_text = conv_modules[i];
+
+    TestCaseVal inputs = {input_val, kernel_1, kernel_2};
+    TestCaseVal results = {expected_val};
+    //TestCasePairs testcase_pairs = {{inputs, results}};
+
+    ConvTestSpec spec = GetParam();
+
+    HloModuleConfig cfg;
+
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
+
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
+
+    CompileAndCheck(std::move(hlo_module), spec.filecheck_lines, inputs, results);
+  }
+}
 
 TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
   std::vector<float> input_val = {0.05,  0.05,  0.05,  0.05,  0.05,  //
@@ -155,11 +222,12 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
 
 std::vector<ConvTestSpec> GetConvTestCases() {
   std::vector<ConvTestSpec> result;
+  // CHECK: %convolution = tile.contract add, mul, %{{.*}}, %{{.*}}, %{{.*}} {idxs = ["n", "x0", "x1", "co", "k0", "k1", "ci"], sink = #{{.*}}, srcs = [#{{.*}}, #{{.*}}]} : tensor<[[prec]]>, tensor<[[b]]x[[iss]]x[[ic]]x[[prec]]>, tensor<[[fss]]x[[ic]]x[[oc]]x[[prec]]> -> tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
+  // CHECK: return %convolution : tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
+  //CHECK: func @hlo_module(%arg0: tensor<[[fss:.*]]x[[ic:.*]]x[[oc:.*]]x[[prec:.*]]>, %arg1: tensor<[[b:.*]]x[[iss:.*]]x[[ic]]x[[prec]]>) -> tensor<[[b]]x[[oss:.*]]x[[oc]]x[[prec]]>
   auto check_str = R"#(
-          CHECK: func @hlo_module(%arg0: tensor<[[fss:.*]]x[[ic:.*]]x[[oc:.*]]x[[prec:.*]]>, %arg1: tensor<[[b:.*]]x[[iss:.*]]x[[ic]]x[[prec]]>) -> tensor<[[b]]x[[oss:.*]]x[[oc]]x[[prec]]>
-          CHECK: %convolution = tile.contract add, mul, %{{.*}}, %{{.*}}, %{{.*}} {idxs = ["n", "x0", "x1", "co", "k0", "k1", "ci"], sink = #{{.*}}, srcs = [#{{.*}}, #{{.*}}]} : tensor<[[prec]]>, tensor<[[b]]x[[iss]]x[[ic]]x[[prec]]>, tensor<[[fss]]x[[ic]]x[[oc]]x[[prec]]> -> tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
-          CHECK: return %convolution : tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
-        )#";
+                        CHECK: func
+                    )#";
   result.push_back(
       {F32, check_str});
   result.push_back(
