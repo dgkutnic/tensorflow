@@ -238,11 +238,11 @@ TEST_P(PlaidMLConvOperationTest, SimpleConvOp) {
 
 std::vector<ConvTestSpec> GetConvTestCases() {
   std::vector<ConvTestSpec> result;
-  // CHECK: %convolution = tile.contract add, mul, %{{.*}}, %{{.*}}, %{{.*}} {idxs = ["n", "x0", "x1", "co", "k0", "k1", "ci"], sink = #{{.*}}, srcs = [#{{.*}}, #{{.*}}]} : tensor<[[prec]]>, tensor<[[b]]x[[iss]]x[[ic]]x[[prec]]>, tensor<[[fss]]x[[ic]]x[[oc]]x[[prec]]> -> tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
-  // CHECK: return %convolution : tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
-  //CHECK: func @hlo_module(%arg0: tensor<[[fss:.*]]x[[ic:.*]]x[[oc:.*]]x[[prec:.*]]>, %arg1: tensor<[[b:.*]]x[[iss:.*]]x[[ic]]x[[prec]]>) -> tensor<[[b]]x[[oss:.*]]x[[oc]]x[[prec]]>
   auto check_str = R"#(
-                        CHECK: func
+                        CHECK: func @hlo_module{{.*}}%[[K1:.*]]: tensor<[[k1ss:.*]]x[[ic:.*]]x[[k1oc:.*]]x[[prec:.*]]>, %[[I:.*]]: tensor<[[b:.*]]x[[iss:.*]]x[[ic]]x[[prec]]>) -> tensor<[[b]]x[[oss:.*]]x[[oc:.*]]x[[prec]]> {
+                        CHECK: %[[c0:.*]] = "eltwise.sconst"() {value = 0.000000e+00 : f64} : () -> tensor<[[prec]]>
+                        CHECK: %{{.*}} = tile.contract add, mul, %[[c0]], %[[I]], %[[K1]] {idxs = ["n", "x0", "x1", "co", "k0", "k1", "ci"], sink = #map{{.*}}, srcs = [#map{{.*}}, #map{{.*}}]} : tensor<[[prec]]>, tensor<[[b]]x[[iss]]x[[ic]]x[[prec]]>, tensor<[[k1ss]]x[[ic]]x[[k1oc]]x[[prec]]> -> tensor<[[b]]x{{.*}}x[[k1oc]]x[[prec]]>
+                        CHECK: return %{{.*}} : tensor<[[b]]x[[oss]]x[[oc]]x[[prec]]>
                     )#";
   result.push_back(
       {F32, check_str});
