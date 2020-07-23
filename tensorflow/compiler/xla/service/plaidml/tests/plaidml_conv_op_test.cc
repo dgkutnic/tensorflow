@@ -8,7 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
-#include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_test_io.h"
+#include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc"
 #include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/tests/filecheck.h"
@@ -136,7 +136,8 @@ TEST_P(PlaidMLConvOperationTest, VariedInputConvTest){
   VLOG(0) << "Testing generated examples";
 
   for (std::size_t i = 0; i < conv_modules.size(); ++i) {
-    VLOG(0) << "Testing set "<< i;
+    std::string set_des = conv_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
     std::vector<float> input_val = conv_is[i];
     std::vector<float> kernel_1 = conv_k1s[i];
     std::vector<float> kernel_2 = conv_k2s[i];

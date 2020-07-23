@@ -8,18 +8,18 @@ import time
 
 tf.compat.v1.disable_eager_execution()
 
-i_sizes = [[1, 224, 224, 3]]
-k_sizes = [[7, 7, 3, 64]]
-strides = [(1, 1)]
-paddings = [[[0, 0], [3, 3], [3, 3], [0, 0]]]
+i_sizes = [[1, 16, 16, 3]]
+k_sizes = [[3, 3, 3, 8]]
+strides = [(1, 1),
+            (2, 2)]
+paddings = [[[0, 0], [0, 0], [0, 0], [0, 0]],
+            [[0, 0], [1, 1], [1, 1], [0, 0]],
+            "VALID",
+            "SAME"]
+dilations = [(1, 1),
+             (2, 2)]
 
-# [[0, 0], [0, 0], [0, 0], [0, 0]],
-#             [[0, 0], [1, 1], [1, 1], [0, 0]],
-#             "VALID",
-#             "SAME",
-            
-dilations = [(1, 1)]
-
+desstr = '\nstd::vector<std::string> conv_descriptions = {'
 istr = '\nstd::vector<std::vector<float>> conv_is = {'
 k1str = '\nstd::vector<std::vector<float>> conv_k1s = {'
 k2str = '\nstd::vector<std::vector<float>> conv_k2s = {'
@@ -56,6 +56,10 @@ for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, p
             K2 : k2
         })
 
+    desstr += '\n\"'
+    for ci in range(len(combination)):
+        desstr += str(combination[ci]).replace(', ','x')+'__'
+    desstr += "\","
     istr += '\n'+ ary2str(ia) + ','
     k1str += '\n'+ ary2str(k1) + ','
     k2str += '\n'+ ary2str(k2) + ','
@@ -71,10 +75,11 @@ k1str = k1str[:-1] + '};'
 k2str = k2str[:-1] + '};'
 ostr = ostr[:-1] + '};'
 modstr = modstr[:-1] + '};'
+desstr = desstr[:-1].replace('[','').replace(']','') +'};'
 
-fstr ='\n' + istr + k1str + k2str + ostr + modstr
+fstr ='\n' + desstr + istr + k1str + k2str + ostr + modstr
 
-iofile = open('tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_test_io.h', 'w+')
+iofile = open('tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc', 'w+')
 iofile.write(fstr)
 iofile.close()
 
