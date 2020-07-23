@@ -1,17 +1,17 @@
-import tensorflow as tf
-import numpy as np
-import os
 import glob
 import itertools
+import numpy as np
+import os
 import shutil
+import tensorflow as tf
+import time
 
-np.set_printoptions(threshold = 125**2)
 tf.compat.v1.disable_eager_execution()
 
 i_sizes = [[1, 224, 224, 3]]
 k_sizes = [[7, 7, 3, 64]]
 strides = [(1, 1)]
-paddings = [[[0, 0], [3, 3], [3, 3], [0, 0]]]
+paddings = [[[0, 0], [2, 2], [2, 2], [0, 0]]]
 
 # [[0, 0], [0, 0], [0, 0], [0, 0]],
 #             [[0, 0], [1, 1], [1, 1], [0, 0]],
@@ -20,8 +20,6 @@ paddings = [[[0, 0], [3, 3], [3, 3], [0, 0]]]
             
 dilations = [(1, 1)]
 
-np.set_printoptions(threshold = max(np.product(np.array(i_sizes)), np.product(np.array(k_sizes))))
-
 istr = '\nstd::vector<std::vector<float>> conv_is = {'
 k1str = '\nstd::vector<std::vector<float>> conv_k1s = {'
 k2str = '\nstd::vector<std::vector<float>> conv_k2s = {'
@@ -29,6 +27,13 @@ ostr = '\nstd::vector<std::vector<float>> conv_os = {'
 modstr = '\nstd::vector<std::string> conv_modules = {'
 
 nstr = '0000'
+
+def ary2str(A):
+    A = A.flatten()
+    ret = '{'
+    for i in range(len(A)):
+        ret += str(A[i]) + ', '
+    return ret[:-1]+ '}'
 
 #Calculate convoluion for each combination; store inputs, outputs & module
 for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, paddings, dilations)):
@@ -50,21 +55,21 @@ for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, p
             K1 : k1,
             K2 : k2
         })
-    
-    istr += '\n'+np.array2string(ia.flatten(), separator=',').replace('\n','') + ','
-    k1str += '\n'+np.array2string(k1.flatten(), separator=',').replace('\n','') + ','
-    k2str += '\n'+np.array2string(k2.flatten(), separator=',').replace('\n','') + ','
-    ostr += '\n'+np.array2string(result.flatten(), separator=',').replace('\n','') + ','
+
+    istr += '\n'+ ary2str(ia) + ','
+    k1str += '\n'+ ary2str(k1) + ','
+    k2str += '\n'+ ary2str(k2) + ','
+    ostr += '\n'+ ary2str(result) + ','
     modfile = open(glob.glob('tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module/*'+nstr+'.before*')[0])
     module = modfile.read()
     modfile.close()
     modstr += '\nR\"#('+ module + ')#\",'
 
 #Format & save header file
-istr = istr.replace('[','{').replace(']','}')[:-1] + '};'
-k1str = k1str.replace('[','{').replace(']','}')[:-1] + '};'
-k2str = k2str.replace('[','{').replace(']','}')[:-1] + '};'
-ostr = ostr.replace('[','{').replace(']','}')[:-1] + '};'
+istr = istr[:-1] + '};'
+k1str = k1str[:-1] + '};'
+k2str = k2str[:-1] + '};'
+ostr = ostr[:-1] + '};'
 modstr = modstr[:-1] + '};'
 
 fstr ='\n' + istr + k1str + k2str + ostr + modstr
