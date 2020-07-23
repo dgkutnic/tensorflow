@@ -74,11 +74,19 @@ tf_cc_test(
     ],
 )
 
+genrule(
+    name = "plaidml_conv_op_test_gen",
+    srcs = [],
+    outs = ["plaidml_conv_op_test.h.inc"],
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc \"$@\"",
+    tools = ["plaidml_conv_op_test_gen.py"]
+)
 
 tf_cc_test(
     name = "plaidml_conv_op_test",
-    srcs = ["plaidml_conv_op_test.cc"],
+    srcs = ["plaidml_conv_op_test.cc", "plaidml_conv_op_test.h.inc"],
     extra_copts = ["-fexceptions"],
+    data = [":plaidml_conv_op_test_gen"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
         "//tensorflow/compiler/xla/service/plaidml:compiler",
