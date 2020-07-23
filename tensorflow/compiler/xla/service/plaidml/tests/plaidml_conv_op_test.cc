@@ -246,8 +246,8 @@ std::vector<ConvTestSpec> GetConvTestCases() {
                     )#";
   result.push_back(
       {F32, check_str});
-  // result.push_back(
-  //     {F64, check_str});
+  result.push_back(
+      {F64, check_str});
   return result;
 }
 
