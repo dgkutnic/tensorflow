@@ -488,10 +488,15 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           std::vector<int> pads(2*spatial_rank);
           for (int i = 0; i < spatial_rank; i++) {
             auto d = raw_window.dimensions()[i];
-            VLOG(2) << "Spatial dimension: size " << d.size() << ", stride " << d.stride() << ", low pads " << d.padding_low() << ", high pads " << d.padding_high();
+            VLOG(2) << "Spatial dimension: size " << d.size() << 
+                       ", stride " << d.stride() << 
+                       ", low pads " << d.padding_low() << 
+                       ", high pads " << d.padding_high() << 
+                       ", base_dilation " << d.base_dilation() <<
+                       ", window_dilation " << d.window_dilation();
             window_size.push_back(d.size());
             strides.push_back(d.stride());
-            dilations.push_back(d.base_dilation());
+            dilations.push_back(d.window_dilation());
             pads[i] = d.padding_low();
             pads[i + spatial_rank] = d.padding_high();
           }
