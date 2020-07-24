@@ -134,7 +134,13 @@ TEST_P(PlaidMLReduceOperationTest, RedWinTest){
     std::vector<float> expected_val = redwin_os[i];
     std::string module_text = redwin_modules[i];
 
-    TestCaseVal inputs = {input_val};
+    TestCaseVal inputs;
+    if (set_des.find("AVG") != std::string::npos) {
+      std::vector<float> zer = {2};
+      inputs = {zer, input_val};
+    }else{
+      inputs = {input_val};
+    }
     TestCaseVal results = {expected_val};
     
     TestCasePairs testcase_pairs ={{inputs, results}};

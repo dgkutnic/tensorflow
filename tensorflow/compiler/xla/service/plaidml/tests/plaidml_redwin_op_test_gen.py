@@ -10,10 +10,10 @@ opname = 'redwin'
 
 tf.compat.v1.disable_eager_execution()
 
-i_sizes = [[1, 16, 16, 3]]
-pool_type = ['MAX'] #, 'AVG
-k_sizes = [[1, 1], [2, 2], [1], [1, 3, 3, 1]]
-strides = [[1, 1], [2, 2], [1], [1, 3, 3, 1]]
+i_sizes = [[1, 2, 2, 1]]
+pool_type = ['MAX', 'AVG']
+k_sizes = [[1, 1]]#, [2, 2], [1], [1, 3, 3, 1]]
+strides = [[1, 1]]#, [2, 2], [1], [1, 3, 3, 1]]
 padding = ['VALID', 'SAME']
 
 desstr = '\nstd::vector<std::string> '+opname+'_descriptions = {'
