@@ -136,7 +136,7 @@ TEST_P(PlaidMLReduceOperationTest, RedWinTest){
 
     TestCaseVal inputs;
     if (set_des.find("AVG") != std::string::npos) {
-      std::vector<float> zer = {2};
+      std::vector<float> zer = {0};
       inputs = {zer, input_val};
     }else{
       inputs = {input_val};

@@ -14,7 +14,7 @@ i_sizes = [[1, 2, 2, 1]]
 pool_type = ['MAX', 'AVG']
 k_sizes = [[1, 1]]#, [2, 2], [1], [1, 3, 3, 1]]
 strides = [[1, 1]]#, [2, 2], [1], [1, 3, 3, 1]]
-padding = ['VALID', 'SAME']
+padding = ['VALID']#, 'SAME']
 
 desstr = '\nstd::vector<std::string> '+opname+'_descriptions = {'
 istr = '\nstd::vector<std::vector<float>> '+opname+'_is = {'
@@ -35,7 +35,7 @@ for (i, combination) in enumerate(itertools.product(i_sizes, pool_type, k_sizes,
     if combination[1] == 'MAX':
         R = tf.nn.max_pool(I, ksize = combination[2], strides = combination[3], padding = combination[4])
     elif combination[1] == 'AVG':
-        R = tf.nn.avg_pool(I, ksize = combination[2], strides = combination[3], padding = combination[4])
+        R = tf.nn.avg_pool2d(I, ksize = combination[2], strides = combination[3], padding = combination[4])
 
     with tf.compat.v1.Session() as sess:
         ia = np.random.uniform(size = combination[0])
