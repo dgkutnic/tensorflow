@@ -21,8 +21,7 @@ dilations = [(1, 1),
 
 desstr = '\nstd::vector<std::string> conv_descriptions = {'
 istr = '\nstd::vector<std::vector<float>> conv_is = {'
-k1str = '\nstd::vector<std::vector<float>> conv_k1s = {'
-k2str = '\nstd::vector<std::vector<float>> conv_k2s = {'
+kstr = '\nstd::vector<std::vector<float>> conv_ks = {'
 ostr = '\nstd::vector<std::vector<float>> conv_os = {'
 modstr = '\nstd::vector<std::string> conv_modules = {'
 
@@ -40,20 +39,14 @@ for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, p
     nstr = nstr[:3-(i//10)] + str(i)
     I = tf.compat.v1.placeholder(tf.float32, combination[0])
     K1 = tf.compat.v1.placeholder(tf.float32, combination[1])
-    C1 = tf.nn.relu(tf.nn.conv2d(I, K1, strides = combination[2], padding = combination[3], dilations = combination[4]))
-    k2sz = combination[1].copy()
-    k2sz[2:] = combination[1][:1:-1]
-    K2 = tf.compat.v1.placeholder(tf.float32, k2sz)
-    C2 = tf.nn.relu(tf.nn.conv2d(C1, K2, strides = combination[2], padding = combination[3], dilations = combination[4]))
+    C1 = tf.nn.conv2d(I, K1, strides = combination[2], padding = combination[3], dilations = combination[4])
 
     with tf.compat.v1.Session() as sess:
         ia = np.random.uniform(size = combination[0])
         k1 = np.random.uniform(size = combination[1])
-        k2 = np.random.uniform(size = k2sz)
-        result = sess.run(C2, feed_dict={
+        result = sess.run(C1, feed_dict={
             I: ia, 
-            K1 : k1,
-            K2 : k2
+            K1 : k1
         })
 
     desstr += '\n\"'
@@ -61,8 +54,7 @@ for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, p
         desstr += str(combination[ci]).replace(', ','x')+'__'
     desstr += "\","
     istr += '\n'+ ary2str(ia) + ','
-    k1str += '\n'+ ary2str(k1) + ','
-    k2str += '\n'+ ary2str(k2) + ','
+    kstr += '\n'+ ary2str(k1) + ','
     ostr += '\n'+ ary2str(result) + ','
     modfile = open(glob.glob('tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module/*'+nstr+'.before*')[0])
     module = modfile.read()
@@ -71,13 +63,12 @@ for (i, combination) in enumerate(itertools.product(i_sizes, k_sizes, strides, p
 
 #Format & save header file
 istr = istr[:-1] + '};'
-k1str = k1str[:-1] + '};'
-k2str = k2str[:-1] + '};'
+kstr = kstr[:-1] + '};'
 ostr = ostr[:-1] + '};'
 modstr = modstr[:-1] + '};'
 desstr = desstr[:-1].replace('[','').replace(']','') +'};'
 
-fstr ='\n' + desstr + istr + k1str + k2str + ostr + modstr
+fstr ='\n' + desstr + istr + kstr + ostr + modstr
 
 iofile = open('tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc', 'w+')
 iofile.write(fstr)

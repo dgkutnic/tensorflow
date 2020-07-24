@@ -139,14 +139,11 @@ TEST_P(PlaidMLConvOperationTest, VariedInputConvTest){
     std::string set_des = conv_descriptions[i];
     VLOG(0) << "Testing set " << i << ": " << set_des;
     std::vector<float> input_val = conv_is[i];
-    std::vector<float> kernel_1 = conv_k1s[i];
-    std::vector<float> kernel_2 = conv_k2s[i];
+    std::vector<float> kernel = conv_ks[i];
     std::vector<float> expected_val = conv_os[i];
-    std::vector<float> relu1 = {0};
-    std::vector<float> relu2 = {0};
     std::string module_text = conv_modules[i];
 
-    TestCaseVal inputs = {relu2, kernel_2, relu1, kernel_1, input_val};
+    TestCaseVal inputs = {kernel, input_val};
     TestCaseVal results = {expected_val};
     
     TestCasePairs testcase_pairs ={{inputs, results}};

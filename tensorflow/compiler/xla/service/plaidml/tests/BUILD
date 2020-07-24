@@ -78,7 +78,7 @@ genrule(
     name = "plaidml_conv_op_test_gen",
     srcs = [],
     outs = ["plaidml_conv_op_test.h.inc"],
-    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc \"$@\"",
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc \"$@\"",
     tools = ["plaidml_conv_op_test_gen.py"]
 )
 
@@ -87,6 +87,42 @@ tf_cc_test(
     srcs = ["plaidml_conv_op_test.cc", "plaidml_conv_op_test.h.inc"],
     extra_copts = ["-fexceptions"],
     data = [":plaidml_conv_op_test_gen"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+genrule(
+    name = "plaidml_reduce_op_test_gen",
+    srcs = [],
+    outs = ["plaidml_reduce_op_test.h.inc"],
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/reduce_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test.h.inc \"$@\"",
+    tools = ["plaidml_reduce_op_test_gen.py"]
+)
+
+genrule(
+    name = "plaidml_redwin_op_test_gen",
+    srcs = [],
+    outs = ["plaidml_redwin_op_test.h.inc"],
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/redwin_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test.h.inc \"$@\"",
+    tools = ["plaidml_redwin_op_test_gen.py"]
+)
+
+tf_cc_test(
+    name = "plaidml_reduce_op_test",
+    srcs = ["plaidml_reduce_op_test.cc", "plaidml_reduce_op_test.h.inc", "plaidml_redwin_op_test.h.inc"],
+    extra_copts = ["-fexceptions"],
+    data = [":plaidml_reduce_op_test_gen", ":plaidml_redwin_op_test_gen"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
         "//tensorflow/compiler/xla/service/plaidml:compiler",
