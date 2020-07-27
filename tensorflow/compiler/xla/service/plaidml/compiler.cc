@@ -201,6 +201,11 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
     Match(c->root_instruction(), m::Maximum(m::Parameter(), m::Parameter()));
   };
 
+  auto computation_is_minimum = [](HloComputation* c) {
+    return c->instruction_count() == 3 &&
+    Match(c->root_instruction(), m::Minimum(m::Parameter(), m::Parameter()));
+  };
+
   // TODO: may be unnecessary because TF has the kParameter opcode which instantiates Placeholder creation.
   // std::vector<Tensor> inputs;
 
@@ -559,9 +564,17 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           if (computation_is_maximum(applied_computation)) {
             VLOG(2) << "Reached condition: max with reduce";
             op = plaidml_op::max(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
+          } else if (computation_is_minimum(applied_computation)) {
+            VLOG(2) << "Reached condition: min with reduce";
+            op = plaidml_op::min(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
           } else if (computation_is_addition(applied_computation)) {
             VLOG(2) << "Reached condition: add with reduce";
             op = plaidml_op::sum(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
+          } else if (computation_is_multiplication(applied_computation)) {
+            VLOG(2) << "Reached condition: prod with reduce";
+            op = plaidml_op::prod(instr_map[operand_ids[0]], ::plaidml::edsl::make_tuple(axes));
+          } else {
+            VLOG(2) << "Unknown reduction type recieved";
           }
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;

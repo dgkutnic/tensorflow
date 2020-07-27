@@ -78,7 +78,7 @@ genrule(
     name = "plaidml_conv_op_test_gen",
     srcs = [],
     outs = ["plaidml_conv_op_test.h.inc"],
-    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc \"$@\"",
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/conv_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_conv_op_test.h.inc \"$@\"",
     tools = ["plaidml_conv_op_test_gen.py"]
 )
 
@@ -106,7 +106,7 @@ genrule(
     name = "plaidml_reduce_op_test_gen",
     srcs = [],
     outs = ["plaidml_reduce_op_test.h.inc"],
-    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/reduce_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test.h.inc \"$@\"",
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/reduce_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_reduce_op_test.h.inc \"$@\"",
     tools = ["plaidml_reduce_op_test_gen.py"]
 )
 
@@ -114,7 +114,7 @@ genrule(
     name = "plaidml_redwin_op_test_gen",
     srcs = [],
     outs = ["plaidml_redwin_op_test.h.inc"],
-    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/redwin_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=1\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test.h.inc \"$@\"",
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/redwin_hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_redwin_op_test.h.inc \"$@\"",
     tools = ["plaidml_redwin_op_test_gen.py"]
 )
 

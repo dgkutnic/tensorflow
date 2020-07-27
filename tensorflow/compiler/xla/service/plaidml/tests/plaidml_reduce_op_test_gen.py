@@ -9,7 +9,7 @@ import time
 tf.compat.v1.disable_eager_execution()
 
 i_sizes = [[1, 16, 16, 3, 5]]
-red_type = ['MAX','SUM','MEAN','STD','VAR'] #, 'EUNORM', 'LOGSUMEXP', 'MIN', 'PROD'
+red_type = ['MAX', 'SUM', 'MEAN', 'STD', 'VAR', 'MIN', 'PROD'] #, 'EUNORM', 'LOGSUMEXP'
 
 desstr = '\nstd::vector<std::string> reduce_descriptions = {'
 istr = '\nstd::vector<std::vector<float>> reduce_is = {'
@@ -58,7 +58,7 @@ for (i, combination) in enumerate(itertools.product(i_sizes, red_type)):
     desstr += "\","
     istr += '\n'+ ary2str(ia) + ','
     ostr += '\n'+ ary2str(result) + ','
-    modfile = open(glob.glob('tensorflow/compiler/xla/service/plaidml/tests/reduce_hlo_module/*.before*')[0])
+    modfile = open(glob.glob('tensorflow/compiler/xla/service/plaidml/tests/reduce_hlo_module/*.before_optimizations.txt')[0])
     module = modfile.read()
     modfile.close()
     modstr += '\nR\"#('+ module + ')#\",'
