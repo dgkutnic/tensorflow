@@ -196,19 +196,6 @@ class TraceMe {
 #endif
   }
 
-  // Appends new_metadata to the payload.
-  // This overload should only be used by other TraceMe APIs.
-  // Prefer the overload above instead.
-  void AppendMetadata(absl::string_view new_metadata) {
-#if !defined(IS_MOBILE_PLATFORM)
-    if (TF_PREDICT_FALSE(start_time_ != kUntracedActivity)) {
-      if (TF_PREDICT_TRUE(TraceMeRecorder::Active())) {
-        traceme_internal::AppendMetadata(&no_init_.name, new_metadata);
-      }
-    }
-#endif
-  }
-
   // Static API, for use when scoped objects are inconvenient.
 
   // Record the start time of an activity.
@@ -236,6 +223,18 @@ class TraceMe {
                                  /*start_time=*/0,
                                  /*end_time=*/EnvTime::NowNanos()});
       }
+    }
+#endif
+  }
+
+  // Records the time of an instant activity.
+  template <typename NameGeneratorT>
+  static void InstantActivity(NameGeneratorT name_generator, int level = 1) {
+#if !defined(IS_MOBILE_PLATFORM)
+    if (TF_PREDICT_FALSE(TraceMeRecorder::Active(level))) {
+      uint64 now = EnvTime::NowNanos();
+      TraceMeRecorder::Record({kCompleteActivity, name_generator(),
+                               /*start_time=*/now, /*end_time=*/now});
     }
 #endif
   }

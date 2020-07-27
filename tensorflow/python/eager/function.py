@@ -65,7 +65,7 @@ from tensorflow.python.ops import gradients_util
 from tensorflow.python.ops import resource_variable_ops
 
 from tensorflow.python.platform import tf_logging as logging
-from tensorflow.python.profiler import traceme
+from tensorflow.python.profiler import trace
 from tensorflow.python.util import compat
 from tensorflow.python.util import function_utils
 from tensorflow.python.util import lazy_loader
@@ -81,11 +81,15 @@ from tensorflow.python.util import tf_inspect
 ag_ctx = lazy_loader.LazyLoader(
     "ag_ctx", globals(),
     "tensorflow.python.autograph.core.ag_ctx")
+np_arrays = lazy_loader.LazyLoader(
+    "np_arrays", globals(),
+    "tensorflow.python.ops.numpy_ops.np_arrays")
 
 
 FORWARD_FUNCTION_ATTRIBUTE_NAME = "forward_function_name"
 BACKWARD_FUNCTION_ATTRIBUTE_NAME = "backward_function_name"
 IMPLEMENTS_ATTRIBUTE_NAME = "_implements"
+SHARED_RENDEZVOUS_ATTRIBUTE_NAME = "shared_rendezvous"
 
 
 def _make_input_signature_hashable(elem, variable_map=None):
@@ -726,7 +730,7 @@ class _DelayedRewriteGradientFunctions(object):
     # pylint: enable=protected-access
 
     capture_mapping = dict(
-        zip([ops.tensor_id(t) for t in self._func_graph.outputs], op.outputs))
+        zip((ops.tensor_id(t) for t in self._func_graph.outputs), op.outputs))
     remapped_captures = [
         capture_mapping.get(ops.tensor_id(capture), capture)
         for capture in backwards_function.captured_inputs
@@ -737,7 +741,11 @@ class _DelayedRewriteGradientFunctions(object):
     cleaned_doutputs = []
     for doutput, placeholder in zip(doutputs, self._func_graph.outputs):
       if backprop_util.IsTrainable(placeholder):
-        if doutput is not None:
+        if isinstance(doutput, ops.IndexedSlices):
+          # Gradient passed to a backward ConcreteFunction must be tf.Tensor,
+          # so we convert tf.IndexedSlices to tf.Tensor.
+          cleaned_doutputs.append(ops.convert_to_tensor(doutput))
+        elif doutput is not None:
           cleaned_doutputs.append(doutput)
         else:
           cleaned_doutputs.append(default_gradient.zeros_like(placeholder))
@@ -1482,6 +1490,11 @@ class ConcreteFunction(object):
     self._func_graph = func_graph
     self._captured_inputs = self._func_graph.external_captures
     self._captured_closures = self._func_graph.deferred_external_captures
+    structured_outputs = self._func_graph.structured_outputs
+    self._ndarrays_list = (
+        isinstance(structured_outputs, (list, tuple)) and
+        all([isinstance(o, np_arrays.ndarray) for o in structured_outputs]))
+    self._ndarray_singleton = isinstance(structured_outputs, np_arrays.ndarray)
 
     # function_spec defines the structured signature.
     self._set_function_spec(function_spec)
@@ -1645,8 +1658,7 @@ class ConcreteFunction(object):
 
   def _call_impl(self, args, kwargs, cancellation_manager=None):
     """See `__call__` for details."""
-    with traceme.TraceMe(self._func_graph.name,
-                         tf_function_call="concrete"):
+    with trace.Trace(self._func_graph.name, tf_function_call="concrete"):
       # Construct the list of input tensors: check if the structured signature
       # applies first; and if not, then use the flat signature.
       if self._function_spec is not None:
@@ -1831,9 +1843,9 @@ class ConcreteFunction(object):
       `args` and `kwargs`.
     """
     return self._call_flat(
-        (t for t in nest.flatten((args, kwargs), expand_composites=True)
+        [t for t in nest.flatten((args, kwargs), expand_composites=True)
          if isinstance(t, (ops.Tensor,
-                           resource_variable_ops.BaseResourceVariable))),
+                           resource_variable_ops.BaseResourceVariable))],
         captured_inputs=self.captured_inputs,
         cancellation_manager=cancellation_manager)
 
@@ -1854,7 +1866,6 @@ class ConcreteFunction(object):
     Raises:
       ValueError: If `args` contains anything other than Tensors or Variables.
     """
-    args = list(args)
     ctx = context.context()
     executing_eagerly = ctx.executing_eagerly()
 
@@ -2150,9 +2161,15 @@ class ConcreteFunction(object):
     if self._func_graph.structured_outputs is None:
       return result
 
+    if result:
+      if self._ndarrays_list:
+        return [np_arrays.tensor_to_ndarray(o) for o in result]
+      elif self._ndarray_singleton:
+        return np_arrays.tensor_to_ndarray(result[0])
+
     # Replace outputs with results, skipping over any 'None' values.
-    outputs_list = nest.flatten(self._func_graph.structured_outputs,
-                                expand_composites=True)
+    outputs_list = nest.flatten(
+        self._func_graph.structured_outputs, expand_composites=True)
     j = 0
     for i, o in enumerate(outputs_list):
       if o is not None:
@@ -2623,7 +2640,9 @@ def _is_ndarray(value):
       # For legacy reasons we do not automatically promote Numpy strings.
       or isinstance(value, np.str_)
       # NumPy dtypes have __array__ as unbound methods.
-      or isinstance(value, type))
+      or isinstance(value, type)
+      # CompositeTensors should be flattened instead.
+      or isinstance(value, composite_tensor.CompositeTensor))
 
 
 def _convert_numpy_inputs(inputs):
@@ -2978,9 +2997,10 @@ class Function(object):
     if not executing_eagerly:
       # We want to force function retracing for each different
       # XLAControlFlowContext, so add `xla_context_id` to the cache key.
-      tpu_context = _enclosing_xla_context()
-      if tpu_context is not None:
-        xla_context_id = id(tpu_context)
+      xla_context = _enclosing_xla_context()
+      if xla_context is not None and \
+            xla_context.RequiresUniqueFunctionRetracing():
+        xla_context_id = id(xla_context)
 
       with ops.init_scope():
         # The graph, or whether we're executing eagerly, should be a part of the

@@ -1,4 +1,4 @@
-// RUN: xla-opt %s -xla-hlo-sink-constants-to-control-flow | FileCheck %s --dump-input=fail
+// RUN: xla-opt %s -xla-hlo-sink-constants-to-control-flow | FileCheck %s
 
 // Tests sinking constants to a while loop.
 
@@ -37,8 +37,8 @@ func @sink_const_to_conditional(%arg0: tensor<i64>) -> tensor<i64> {
   %c1 = xla_hlo.constant dense<2> : tensor<i64>
   %0 = "xla_hlo.compare"(%arg0, %c0) {comparison_direction = "LT"} : (tensor<i64>, tensor<i64>) -> tensor<i1>
   %1 = "xla_hlo.tuple"(%arg0) : (tensor<i64>) -> tuple<tensor<i64>>
-  // CHECK: xla_hlo.conditional
-  %2 = "xla_hlo.conditional"(%0, %1, %1) ( {
+  // CHECK: xla_hlo.if
+  %2 = "xla_hlo.if"(%0, %1, %1) ( {
   ^bb0(%arg1: tuple<tensor<i64>>):
     // CHECK: %[[C0:.+]] = xla_hlo.constant dense<1> : tensor<i64>
     %3 = "xla_hlo.get_tuple_element"(%arg1) {index = 0 : i32} : (tuple<tensor<i64>>) -> tensor<i64>
