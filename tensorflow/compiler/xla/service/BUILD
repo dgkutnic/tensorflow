@@ -908,6 +908,8 @@ cc_library(
     srcs = ["service.cc"],
     hdrs = ["service.h"],
     deps = [
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml:platform_id",
         ":allocation_tracker",
         ":backend",
         ":channel_tracker",
@@ -1079,6 +1081,17 @@ cc_library(
         "//tensorflow/compiler/xla/service/interpreter:compiler",
         "//tensorflow/compiler/xla/service/interpreter:interpreter_transfer_manager",
         "//tensorflow/compiler/xla/service/interpreter:platform",
+        "//tensorflow/core:stream_executor_no_cuda",
+    ],
+)
+
+cc_library(
+    name = "plaidml_plugin",
+    deps = [
+        ":service",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml:plaidml_transfer_manager",
+        "//tensorflow/compiler/xla/service/plaidml:platform",
         "//tensorflow/core:stream_executor_no_cuda",
     ],
 )

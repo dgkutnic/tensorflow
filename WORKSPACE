@@ -18,7 +18,7 @@ load("//tensorflow:workspace.bzl", "tf_repositories")
 # Please add all new TensorFlow dependencies in workspace.bzl.
 tf_repositories()
 
-register_toolchains("@local_config_python//:py_toolchain")
+register_toolchains("@com_intel_plaidml//:py_toolchain")
 
 load("@io_bazel_rules_closure//closure:defs.bzl", "closure_repositories")
 
@@ -43,10 +43,12 @@ load(
 
 container_repositories()
 
+
 load("//third_party/toolchains/preconfig/generate:workspace.bzl",
      "remote_config_workspace")
 
 remote_config_workspace()
+
 
 # Use `swift_rules_dependencies` to fetch the toolchains. With the
 # `git_repository` rules above, the following call will skip redefining them.
@@ -150,3 +152,19 @@ load("//third_party/googleapis:repository_rules.bzl", "config_googleapis")
 
 config_googleapis()
 
+# required for dependency @com_intel_plaidml
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+load("@com_intel_plaidml//bzl:workspace.bzl", "plaidml_workspace")
+
+plaidml_workspace()
+
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
+rules_pkg_dependencies()
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+
+py_repositories()

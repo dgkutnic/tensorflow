@@ -324,6 +324,7 @@ cc_library(
         "xla_op_registry.cc",
         "xla_resource.cc",
         "xla_cpu_backend.cc",
+        "xla_plaidml_backend.cc",
     ] + if_cuda_is_configured([
         "xla_gpu_backend.cc",
     ]) + if_rocm_is_configured([

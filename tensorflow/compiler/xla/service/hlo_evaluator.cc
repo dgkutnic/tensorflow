@@ -233,6 +233,7 @@ StatusOr<Literal> HloEvaluator::Evaluate(
     const HloComputation& computation,
     absl::Span<const Literal* const> arg_literals) {
   CHECK(computation.parent() != nullptr);
+  VLOG(2) << "Enter HLOEVALUTOR";
   XLA_VLOG_LINES(
       2, "HloEvaluator::Evaluate computation:\n" + computation.ToString());
 

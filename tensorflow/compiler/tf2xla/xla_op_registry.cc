@@ -36,8 +36,10 @@ namespace tensorflow {
 
 const char* const DEVICE_CPU_XLA_JIT = "XLA_CPU_JIT";
 const char* const DEVICE_GPU_XLA_JIT = "XLA_GPU_JIT";
+const char* const DEVICE_PLAIDML_XLA_JIT = "XLA_PLAIDML_JIT";
 const char* const DEVICE_XLA_CPU = "XLA_CPU";
 const char* const DEVICE_XLA_GPU = "XLA_GPU";
+const char* const DEVICE_XLA_PLAIDML = "XLA_PLAIDML";
 
 static Status LaunchOpHasKernelForDevice(const DeviceType& device_type) {
   const OpDef* op_def;
@@ -138,7 +140,7 @@ XlaOpRegistry::~XlaOpRegistry() = default;
     const string& device_name, const DeviceRegistration** registration) {
   XlaOpRegistry& registry = Instance();
 
-  // Lazily register the CPU and GPU JIT devices the first time
+  // Lazily register the CPU, GPU, and PLAIDML JIT devices the first time
   // GetCompilationDevice is called.
   static void* registration_init = [&registry]() {
     MarkForCompilationPassFlags* flags = GetMarkForCompilationPassFlags();
@@ -159,6 +161,14 @@ XlaOpRegistry::~XlaOpRegistry() = default;
       DeviceRegistration& registration =
           registry.compilation_devices_[DEVICE_GPU];
       registration.compilation_device_name = DEVICE_GPU_XLA_JIT;
+      registration.autoclustering_policy =
+          XlaOpRegistry::AutoclusteringPolicy::kIfEnabledGlobally;
+    }
+    if (1) {
+//    if (LaunchOpHasKernelForDevice(DeviceType(DEVICE_PLAIDML)).ok()) {
+      DeviceRegistration& registration =
+          registry.compilation_devices_[DEVICE_PLAIDML];
+      registration.compilation_device_name = DEVICE_PLAIDML_XLA_JIT;
       registration.autoclustering_policy =
           XlaOpRegistry::AutoclusteringPolicy::kIfEnabledGlobally;
     }

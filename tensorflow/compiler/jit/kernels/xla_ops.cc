@@ -564,6 +564,7 @@ XlaRunOp::XlaRunOp(OpKernelConstruction* ctx)
     : OpKernel(ctx), platform_info_(PlatformInfoFromContext(ctx)) {}
 
 void XlaRunOp::Compute(OpKernelContext* ctx) {
+  // TODO: override with executable
   VLOG(3) << "XlaRunOp " << def().name();
   Tensor key_tensor = ctx->input(ctx->num_inputs() - 1);
   const XlaExecutableClosureStore::KeyT& key = key_tensor.flat<tstring>()(0);

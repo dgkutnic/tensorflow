@@ -148,6 +148,7 @@ CpuAotCompilationResult::CpuAotCompilationResult(
 CpuAotCompilationResult::~CpuAotCompilationResult() = default;
 
 CpuCompiler::CpuCompiler() {
+  VLOG(1) << "Initializing CpuCompiler";
   // Initialize LLVM the first time the CpuCompiler is initialized.
   static bool llvm_initialized = []() {
     InitializeLLVMTarget();

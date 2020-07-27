@@ -48,6 +48,8 @@ cc_library(
     deps = [
         ":xla_cpu_device",
         ":xla_cpu_jit",
+        ":xla_plaidml_device",
+        ":xla_plaidml_jit",
         "//tensorflow/compiler/plugin",
     ] + if_cuda_or_rocm([
         ":xla_gpu_device",
@@ -80,6 +82,40 @@ cc_library(
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
         "//tensorflow/compiler/tf2xla/kernels:xla_dummy_ops",
         "//tensorflow/compiler/xla/service:gpu_plugin",
+    ]),
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "xla_plaidml_device",
+    srcs = ["xla_plaidml_device.cc"],
+    visibility = [":friends"],
+    deps = [
+        ":flags",
+        ":jit_compilation_passes",
+        ":xla_device",
+        ":xla_kernel_creator",  # buildcleaner: keep
+        "//tensorflow/compiler/jit/kernels:xla_ops",
+        "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla/kernels:xla_ops",
+        "//tensorflow/compiler/xla/service:plaidml_plugin",  # buildcleaner: keep
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:lib",
+        "@com_google_absl//absl/memory",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "xla_plaidml_jit",
+    visibility = ["//visibility:public"],
+    deps = if_cuda_or_rocm([
+        ":jit_compilation_passes",
+        ":xla_kernel_creator",  # buildcleaner: keep
+        "//tensorflow/compiler/jit/kernels:xla_ops",
+        "//tensorflow/compiler/tf2xla/kernels:xla_ops",
+        "//tensorflow/compiler/tf2xla/kernels:xla_dummy_ops",
+        "//tensorflow/compiler/xla/service:plaidml_plugin",
     ]),
     alwayslink = 1,
 )
@@ -801,6 +837,7 @@ tf_cc_test(
         ":xla_cluster_util",
         ":xla_cpu_device",
         ":xla_gpu_device",
+        ":xla_plaidml_device",
         "//tensorflow/cc:cc_ops",
         "//tensorflow/cc:cc_ops_internal",
         "//tensorflow/cc:function_ops",
@@ -1025,5 +1062,7 @@ cc_header_only_library(
         ":xla_cpu_jit",
         ":xla_gpu_device",
         ":xla_gpu_jit",
+        ":xla_plaidml_device",
+        ":xla_plaidml_jit",
     ],
 )

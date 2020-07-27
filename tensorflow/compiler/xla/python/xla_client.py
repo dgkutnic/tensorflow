@@ -52,6 +52,7 @@ profiler = _xla.profiler
 xla_platform_names = {
     'cpu': 'Host',
     'gpu': 'CUDA',
+    'plaidml': 'Host',
 }
 
 
@@ -89,12 +90,16 @@ def _gpu_backend_factory(distributed_client=None, node_id=0):
       distributed_client=distributed_client,
       node_id=node_id)
 
+def _plaidml_backend_factory():
+  client = _xla.get_plaidml_client(asynchronous=True)
+  return LocalBackend(platform='plaidml', client=client)
 
 # Backend factories, keyed by user-visible name, in increasing priority order.
 _local_backend_factories = collections.OrderedDict([
     ('interpreter', _interpreter_backend_factory),
     ('cpu', _cpu_backend_factory),
     ('gpu', _gpu_backend_factory),
+    ('plaidml', _plaidml_backend_factory),
 ])
 
 

@@ -404,9 +404,11 @@ static void ShowXlaDeviceDeprecationWarning(
   }
 }
 
+// TODO: Try executing PlaidML here
 void XlaDevice::Compute(OpKernel* op_kernel, OpKernelContext* context) {
   VLOG(2) << "XlaDevice::Compute " << op_kernel->name() << ":"
           << op_kernel->type_string();
+  VLOG(2) << "num_inputs:" << context->num_inputs();
   ShowXlaDeviceDeprecationWarning(jit_device_name_.type_string());
   op_kernel->Compute(context);
 }

@@ -122,6 +122,7 @@ class Registrar {
   //    DeviceType("CPU").
   //
   // The default priority values for built-in devices is:
+  // PlaidML: 250
   // GPU: 210
   // SYCL: 200
   // GPUCompatibleCPU: 70

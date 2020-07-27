@@ -326,6 +326,18 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "plaidml_device",
+    srcs = ["plaidml_device.cc"],
+    hdrs = ["plaidml_device.h"],
+    deps = [
+        ":local_client",
+        "//tensorflow/compiler/xla:statusor",
+        "//tensorflow/compiler/xla/client:client_library",
+        "//tensorflow/compiler/xla/service:platform_util",
+    ],
+)
+
 config_setting(
     name = "enable_gpu",
     values = {"define": "xla_python_enable_gpu=true"},
@@ -344,6 +356,7 @@ pybind_extension(
     module_name = "xla_extension",
     deps = [
         ":bfloat16",
+        ":plaidml_device",
         ":dlpack",
         ":ops",
         ":py_client",
@@ -391,6 +404,7 @@ pybind_extension(
         "//tensorflow/compiler/xla/service:shaped_buffer",
         "//tensorflow/compiler/xla/service:transfer_manager",
         "//tensorflow/compiler/xla/service:cpu_plugin",
+        "//tensorflow/compiler/xla/service:plaidml_plugin",
         "//tensorflow/core:lib",
         # Do NOT remove this dependency. The XLA Python extension must not
         # depend on any part of TensorFlow at runtime, **including**

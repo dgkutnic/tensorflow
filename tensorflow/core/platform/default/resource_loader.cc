@@ -28,8 +28,11 @@ std::string GetDataDependencyFilepath(const std::string& relative_path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest(&error));
 
   if (runfiles == nullptr) {
+    return "";
+    /*
     LOG(FATAL) << "Unable to access the data dependencies of this test.\n"
                   "Make sure you are running this test using bazel.";
+    */
   }
   return runfiles->Rlocation(io::JoinPath("org_tensorflow", relative_path));
 }
