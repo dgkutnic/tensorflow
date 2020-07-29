@@ -177,6 +177,25 @@ tf_cc_test(
 )
 
 tf_cc_test(
+    name = "plaidml_i3d_3b_test",
+    srcs = ["plaidml_i3d_3b_test.cc", "i3d_pretrained_inputs_and_weights.h", "i3d_3b_output.h"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
     name = "plaidml_mnist_cnn_test",
     srcs = ["plaidml_mnist_cnn_test.cc"],
     extra_copts = ["-fexceptions"],
@@ -216,7 +235,7 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_resnext_test",
-    srcs = ["plaidml_resnext_test.cc", "resnext50_pretrained_inputs_and_weights.h"],
+    srcs = ["plaidml_resnext_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_output.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
@@ -236,7 +255,7 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_resnext_stage1_test",
-    srcs = ["plaidml_resnext_stage1_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext_stage1_output.h"],
+    srcs = ["plaidml_resnext_stage1_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_stage1_output.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
