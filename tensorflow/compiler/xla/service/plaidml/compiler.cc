@@ -472,7 +472,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           }
           int concat_axis = instruction->concatenate_dimension();
           VLOG(2) << "Concat axis " << concat_axis;
-	  auto op = plaidml_op::concatenate(tensors, concat_axis);
+	        auto op = plaidml_op::concatenate(tensors, concat_axis);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
@@ -545,7 +545,8 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
             low_pads.push_back(padding_dimension.edge_padding_low());
             high_pads.push_back(padding_dimension.edge_padding_high());
           }
-          auto op = plaidml_op::spatial_padding(instr_map[operand_ids[0]], low_pads, high_pads, plaidml_op::TensorLayout::NXC);
+          float padding
+          auto op = plaidml_op::explicit_padding(instr_map[operand_ids[0]], low_pads, high_pads, plaidml_op::PadMode::CONSTANT, instr_map[operand_ids[1]])
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }

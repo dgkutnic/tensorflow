@@ -10,7 +10,7 @@ tf.compat.v1.disable_eager_execution()
 
 opsetname = 'shape'
 
-ops = ['broadcast', 'reshape', 'pad']
+ops = ['pad'] #'broadcast', 'reshape', 
 
 def getInputs(opname):
     if opname == 'broadcast':
@@ -53,10 +53,10 @@ def getInputs(opname):
         return tests, opfunc
     elif opname == 'pad':
         # Product of each isize must be divisible by product of each odim
-        i_sizes = [[2, 2], [3, 3, 3], [1, 3, 4, 2]]
-        max_pads = [3, 10]
-        modes = ['REFLECT', 'SYMMETRIC']
-        cvals = [0, 1]
+        i_sizes = [[2, 2]]
+        max_pads = [3]
+        modes = ['CONSTANT']
+        cvals = [1]
         tests = itertools.product(i_sizes, max_pads, modes, cvals)
         def opfunc(test):
             padding = np.random.randint(test[1], size = (len(test[0]),2))
