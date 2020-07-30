@@ -9,7 +9,7 @@
 #include "tensorflow/compiler/xla/service/plaidml/compiler.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/plaidml_codegen_test.h"
 #include "tensorflow/compiler/xla/service/plaidml/tests/resnext50_pretrained_inputs_and_weights.h"
-#include "tensorflow/compiler/xla/service/plaidml/tests/resnext_stage1_output.h"
+#include "tensorflow/compiler/xla/service/plaidml/tests/resnext50_stage1_output.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/tests/verified_hlo_module.h"
@@ -88,6 +88,7 @@ class PlaidMLResNeXTOperationTest
 
       checkProgram(*program, inp, exp);
 
+      VLOG(0) << "checkProgram complete";
     }
 
     return Status::OK();

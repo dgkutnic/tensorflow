@@ -508,7 +508,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           op.filter_shape(window_size)
             .strides(strides)
             .dilations(dilations)
-            .autopad_mode(plaidml_op::AutoPadMode::NONE)
+            .autopad_mode(plaidml_op::AutoPadMode::EXPLICIT)
             .manual_padding(pads)
             .name(meta_name);
           instr_map.insert(std::make_pair(cur_instr_id, op));
@@ -587,7 +587,7 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           Tensor op;
           // Default pool mode and pad mode
           plaidml_op::PoolMode pm = plaidml_op::PoolMode::AVG;
-          plaidml_op::AutoPadMode am = plaidml_op::AutoPadMode::NONE;
+          plaidml_op::AutoPadMode am = plaidml_op::AutoPadMode::EXPLICIT;
           // This window is in NXC format: for example, a window of 1x2x2x1 translates to {2, 2} in the pooling op
           // Spatial rank in this case has to take NXC into account, so subtract 2
           auto raw_window = instruction->window();
