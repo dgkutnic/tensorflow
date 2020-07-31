@@ -10,7 +10,7 @@ tf.compat.v1.disable_eager_execution()
 
 opsetname = 'shape'
 
-ops = ['pad'] #'broadcast', 'reshape', 
+ops = ['broadcast', 'reshape', 'pad']
 
 def getInputs(opname):
     if opname == 'broadcast':

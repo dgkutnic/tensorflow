@@ -160,7 +160,7 @@ TEST_P(PlaidMLShapeOperationTest, PadTest){
     ShapeTestSpec spec = GetParam();
     auto fcheck_lines = spec.filecheck_lines;
     std::string match = "> {";
-    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = \"tile.pad\"\n");
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
 
     HloModuleConfig cfg;
 

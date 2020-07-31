@@ -540,13 +540,27 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           std::vector<int> high_pads;
           auto padding_config = instruction->padding_config();
           // NXC layout, check only the X
-          for (int64 i = 1; i < padding_config.dimensions_size() - 1; i++) {
+          for (int64 i = 0; i < padding_config.dimensions_size(); i++) {
             auto padding_dimension = padding_config.dimensions(i);
             low_pads.push_back(padding_dimension.edge_padding_low());
             high_pads.push_back(padding_dimension.edge_padding_high());
           }
-          float padding
-          auto op = plaidml_op::explicit_padding(instr_map[operand_ids[0]], low_pads, high_pads, plaidml_op::PadMode::CONSTANT, instr_map[operand_ids[1]])
+          double padval;
+          
+          auto insts = computation -> instructions();
+          auto it = absl::c_find_if(insts,
+              [&](HloInstruction* instr) { 
+                bool A = instr->opcode() == HloOpcode::kConstant;
+                auto instr_metadata = instr->metadata();
+                auto instruction_metadata = instruction->metadata();
+                bool B = instr_metadata.op_name().compare(instruction_metadata.op_name());
+                return A && ~B; 
+              });
+          const Literal& literal = it->literal();
+          auto span = absl::Span<const int64>({0});
+          padval = literal.GetAsDouble(span).value();
+
+          auto op = plaidml_op::explicit_padding(instr_map[operand_ids[0]], low_pads, high_pads, plaidml_op::PadMode::CONSTANT, padval);
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
