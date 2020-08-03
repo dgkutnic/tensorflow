@@ -173,6 +173,34 @@ TEST_P(PlaidMLShapeOperationTest, PadTest){
   }
 }
 
+TEST_P(PlaidMLShapeOperationTest, SliceTest){
+  VLOG(0) << "Testing generated examples";
+
+  for (std::size_t i = 0; i < slice_modules.size(); ++i) {
+    std::string set_des = slice_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
+    TestCaseVal inputs = slice_is[i];
+    TestCaseVal results = slice_os[i];
+    std::string module_text = slice_modules[i];
+    
+    TestCasePairs testcase_pairs ={{inputs, results}};
+
+    ShapeTestSpec spec = GetParam();
+    auto fcheck_lines = spec.filecheck_lines;
+    std::string match = "> {";
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
+
+    HloModuleConfig cfg;
+
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
+
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
+
+    CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
+  }
+}
+
 std::vector<ShapeTestSpec> GetShapeTestCases() {
   std::vector<ShapeTestSpec> result;
   auto check_str = R"#(

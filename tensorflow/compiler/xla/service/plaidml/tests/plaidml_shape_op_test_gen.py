@@ -10,7 +10,7 @@ tf.compat.v1.disable_eager_execution()
 
 opsetname = 'shape'
 
-ops = ['broadcast', 'reshape', 'pad']
+ops = ['broadcast', 'reshape', 'pad', 'slice']
 
 def getInputs(opname):
     if opname == 'broadcast':
@@ -53,10 +53,10 @@ def getInputs(opname):
         return tests, opfunc
     elif opname == 'pad':
         # Product of each isize must be divisible by product of each odim
-        i_sizes = [[2, 2]]
-        max_pads = [3]
-        modes = ['CONSTANT']
-        cvals = [1]
+        i_sizes = [[2, 2], [3, 4, 1, 6]]
+        max_pads = [3, 2, 1]
+        modes = ['CONSTANT'] # REFLECT, SYMMETRIC
+        cvals = [-1, 5, 0]
         tests = itertools.product(i_sizes, max_pads, modes, cvals)
         def opfunc(test):
             padding = np.random.randint(test[1], size = (len(test[0]),2))
@@ -65,7 +65,32 @@ def getInputs(opname):
             elif test[2] == 'SYMMETRIC':
                 padding = np.minimum(padding, np.expand_dims(np.array(test[0]),1))
             I = tf.compat.v1.placeholder(tf.float32, test[0])
+            if np.all(padding==0):
+                padding[0][0] = 1
             O = tf.pad(I, padding, test[2], test[3])
+            with tf.compat.v1.Session() as sess:
+                i = np.random.uniform(size = test[0])
+                o = sess.run(O, feed_dict={
+                    I: i
+                })
+            if test[2] == 'CONSTANT':
+                return [np.array(test[3]), i], [o]
+            return [i], [o]
+
+        return tests, opfunc
+    elif opname == 'slice':
+        i_sizes = [[2, 2, 1]]
+        begins = [[0, 0, 0], [1, 2, 3], [5, 4, 2]]
+        s_sizes = [[1, 1, 1], [2, 1, 4]]
+        
+        tests = itertools.product(i_sizes, begins, s_sizes)
+        def opfunc(test):
+            i_size, begin, s_size = np.array(test[0]), np.array(test[1]), np.array(test[2])
+            s_size[s_size>i_size] = i_size[s_size>i_size]
+            begin = np.minimum(begin, i_size-s_size)
+
+            I = tf.compat.v1.placeholder(tf.float32, test[0])
+            O = tf.slice(I, begin, s_size)
             with tf.compat.v1.Session() as sess:
                 i = np.random.uniform(size = test[0])
                 o = sess.run(O, feed_dict={
@@ -74,6 +99,7 @@ def getInputs(opname):
             return [i], [o]
         
         return tests, opfunc
+                
     pass
 
 def ary2str(A):
