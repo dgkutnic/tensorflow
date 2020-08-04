@@ -6,9 +6,9 @@ def clean_dep(dep):
 def repo():
     http_archive(
         name = "com_intel_plaidml",
-        url = "https://github.com/plaidml/plaidml/archive/a55edee05b07967caaafb0333eb17f3ad1538ea6.zip",
-        sha256 = "2553ecf22a88f030b0a8b1830a27dbb7a755bb48f025b8ac9ae5dc9a8669440a",
-        strip_prefix = "plaidml-a55edee05b07967caaafb0333eb17f3ad1538ea6",
+        url = "https://github.com/plaidml/plaidml/archive/4e36154f112ee2db4326e67ede0366393653e706.zip",
+        sha256 = "5a5310f79bd6be9a30a053a7cadce2f2e9532ccb3b5af1bd8bf78f3574ae4887",
+        strip_prefix = "plaidml-4e36154f112ee2db4326e67ede0366393653e706",
     )
     http_archive(
         name = "gflags",

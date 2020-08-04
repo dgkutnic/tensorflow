@@ -828,8 +828,9 @@ const bool IsExemptFromSideEffectsExecutionValidation(const string& op) {
       {// LINT.IfChange
        // Op types that should not run in program order, e.g. because they need
        // to run asynchronously to avoid deadlock.
-       "CollectiveGather", "CollectiveReduce", "CollectiveBcastSend",
-       "CollectiveBcastRecv", "NcclAllReduce", "Send", "Recv",
+       "CollectiveGather", "CollectiveReduce", "CollectiveReduceV2",
+       "CollectiveBcastSend", "CollectiveBcastRecv", "NcclAllReduce", "Send",
+       "Recv",
 
        // Legacy random ops.
        // See details in tensorflow/python/framework/auto_control_deps.py.
@@ -837,7 +838,6 @@ const bool IsExemptFromSideEffectsExecutionValidation(const string& op) {
        "ParameterizedTruncatedNormal", "TruncatedNormal", "RandomShuffle",
        "Multinomial", "RandomGamma", "RandomGammaGrad", "RandomPoisson",
        "RandomPoissonV2",
-       // LINT.ThenChange(//tensorflow/python/framework/auto_control_deps.py)
 
        // ReadVariableOp marked as stateful because it consumes DT_RESOURCE,
        // but it can't generate any observable side-effect.
@@ -845,13 +845,19 @@ const bool IsExemptFromSideEffectsExecutionValidation(const string& op) {
 
        // CudnnRNN ops are stateful but they can't generate any observable
        // side-effect.
-       "CudnnRNNV2", "CudnnRNNV3", "CudnnRNNBackpropV2", "CudnnRNNBackpropV3",
+       "CudnnRNN", "CudnnRNNBackprop", "CudnnRNNV2", "CudnnRNNV3",
+       "CudnnRNNBackpropV2", "CudnnRNNBackpropV3",
 
        // TPUEmbedding EnqueueOps are stateful but this is only between ops with
        // the same device_ordinal on the same host.
        "EnqueueTPUEmbeddingSparseBatch", "EnqueueTPUEmbeddingIntegerBatch",
        "EnqueueTPUEmbeddingSparseTensorBatch",
-       "EnqueueTPUEmbeddingRaggedTensorBatch"});
+       "EnqueueTPUEmbeddingRaggedTensorBatch",
+
+       // SaveV2 and RestoreV2 should be allowed to operate in parallel on
+       // multiple hosts.
+       "SaveV2", "RestoreV2"});
+  // LINT.ThenChange(//tensorflow/python/framework/auto_control_deps.py)
   return exemption->contains(op);
 }
 
@@ -1246,7 +1252,7 @@ Status InlineFunctionCalls(const GrapplerItem& item,
 
       if (n->IsIfNode()) {
         TF_RETURN_IF_ERROR(RewriteIfNode(n, graph.get(), false));
-      } else if (n->type_string() == "Case") {
+      } else if (n->IsCaseNode()) {
         TF_RETURN_IF_ERROR(RewriteCaseNode(n, graph.get(), false));
       } else if (n->IsWhileNode()) {
         TF_RETURN_IF_ERROR(RewriteWhileNode(n, graph.get(), false));
