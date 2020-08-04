@@ -89,117 +89,117 @@ class PlaidMLShapeOperationTest
   }
 };
 
-// TEST_P(PlaidMLShapeOperationTest, BroadcastTest){
-//   VLOG(0) << "Testing generated examples";
+TEST_P(PlaidMLShapeOperationTest, BroadcastTest){
+  VLOG(0) << "Testing generated examples";
 
-//   for (std::size_t i = 0; i < broadcast_modules.size(); ++i) {
-//     std::string set_des = broadcast_descriptions[i];
-//     VLOG(0) << "Testing set " << i << ": " << set_des;
-//     TestCaseVal inputs = broadcast_is[i];
-//     TestCaseVal results = broadcast_os[i];
-//     std::string module_text = broadcast_modules[i];
+  for (std::size_t i = 0; i < broadcast_modules.size(); ++i) {
+    std::string set_des = broadcast_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
+    TestCaseVal inputs = broadcast_is[i];
+    TestCaseVal results = broadcast_os[i];
+    std::string module_text = broadcast_modules[i];
     
-//     TestCasePairs testcase_pairs ={{inputs, results}};
+    TestCasePairs testcase_pairs ={{inputs, results}};
 
-//     ShapeTestSpec spec = GetParam();
-//     auto fcheck_lines = spec.filecheck_lines;
-//     std::string match = "> {";
-//     fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
+    ShapeTestSpec spec = GetParam();
+    auto fcheck_lines = spec.filecheck_lines;
+    std::string match = "> {";
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
 
-//     HloModuleConfig cfg;
+    HloModuleConfig cfg;
 
-//     std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
-//       "module", cfg, false, false, nullptr);
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
 
-//     hlo_module->ParseHloStringAndVerifyModule(module_text); 
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
 
-//     CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
-//   }
-// }
+    CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
+  }
+}
 
-// TEST_P(PlaidMLShapeOperationTest, ReshapeTest){
-//   VLOG(0) << "Testing generated examples";
+TEST_P(PlaidMLShapeOperationTest, ReshapeTest){
+  VLOG(0) << "Testing generated examples";
 
-//   for (std::size_t i = 0; i < reshape_modules.size(); ++i) {
-//     std::string set_des = reshape_descriptions[i];
-//     VLOG(0) << "Testing set " << i << ": " << set_des;
-//     TestCaseVal inputs = reshape_is[i];
-//     TestCaseVal results = reshape_os[i];
-//     std::string module_text = reshape_modules[i];
+  for (std::size_t i = 0; i < reshape_modules.size(); ++i) {
+    std::string set_des = reshape_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
+    TestCaseVal inputs = reshape_is[i];
+    TestCaseVal results = reshape_os[i];
+    std::string module_text = reshape_modules[i];
     
-//     TestCasePairs testcase_pairs ={{inputs, results}};
+    TestCasePairs testcase_pairs ={{inputs, results}};
 
-//     ShapeTestSpec spec = GetParam();
-//     auto fcheck_lines = spec.filecheck_lines;
-//     std::string match = "> {";
-//     fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = \"tile.reshape\"\n");
+    ShapeTestSpec spec = GetParam();
+    auto fcheck_lines = spec.filecheck_lines;
+    std::string match = "> {";
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = \"tile.reshape\"\n");
 
-//     HloModuleConfig cfg;
+    HloModuleConfig cfg;
 
-//     std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
-//       "module", cfg, false, false, nullptr);
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
 
-//     hlo_module->ParseHloStringAndVerifyModule(module_text); 
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
 
-//     CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
-//   }
-// }
+    CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
+  }
+}
 
-// TEST_P(PlaidMLShapeOperationTest, PadTest){
-//   VLOG(0) << "Testing generated examples";
+TEST_P(PlaidMLShapeOperationTest, PadTest){
+  VLOG(0) << "Testing generated examples";
 
-//   for (std::size_t i = 0; i < pad_modules.size(); ++i) {
-//     std::string set_des = pad_descriptions[i];
-//     VLOG(0) << "Testing set " << i << ": " << set_des;
-//     TestCaseVal inputs = pad_is[i];
-//     TestCaseVal results = pad_os[i];
-//     std::string module_text = pad_modules[i];
+  for (std::size_t i = 0; i < pad_modules.size(); ++i) {
+    std::string set_des = pad_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
+    TestCaseVal inputs = pad_is[i];
+    TestCaseVal results = pad_os[i];
+    std::string module_text = pad_modules[i];
     
-//     TestCasePairs testcase_pairs ={{inputs, results}};
+    TestCasePairs testcase_pairs ={{inputs, results}};
 
-//     ShapeTestSpec spec = GetParam();
-//     auto fcheck_lines = spec.filecheck_lines;
-//     std::string match = "> {";
-//     fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
+    ShapeTestSpec spec = GetParam();
+    auto fcheck_lines = spec.filecheck_lines;
+    std::string match = "> {";
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
 
-//     HloModuleConfig cfg;
+    HloModuleConfig cfg;
 
-//     std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
-//       "module", cfg, false, false, nullptr);
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
 
-//     hlo_module->ParseHloStringAndVerifyModule(module_text); 
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
 
-//     CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
-//   }
-// }
+    CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
+  }
+}
 
-// TEST_P(PlaidMLShapeOperationTest, SliceTest){
-//   VLOG(0) << "Testing generated examples";
+TEST_P(PlaidMLShapeOperationTest, SliceTest){
+  VLOG(0) << "Testing generated examples";
 
-//   for (std::size_t i = 0; i < slice_modules.size(); ++i) {
-//     std::string set_des = slice_descriptions[i];
-//     VLOG(0) << "Testing set " << i << ": " << set_des;
-//     TestCaseVal inputs = slice_is[i];
-//     TestCaseVal results = slice_os[i];
-//     std::string module_text = slice_modules[i];
+  for (std::size_t i = 0; i < slice_modules.size(); ++i) {
+    std::string set_des = slice_descriptions[i];
+    VLOG(0) << "Testing set " << i << ": " << set_des;
+    TestCaseVal inputs = slice_is[i];
+    TestCaseVal results = slice_os[i];
+    std::string module_text = slice_modules[i];
     
-//     TestCasePairs testcase_pairs ={{inputs, results}};
+    TestCasePairs testcase_pairs ={{inputs, results}};
 
-//     ShapeTestSpec spec = GetParam();
-//     auto fcheck_lines = spec.filecheck_lines;
-//     std::string match = "> {";
-//     fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
+    ShapeTestSpec spec = GetParam();
+    auto fcheck_lines = spec.filecheck_lines;
+    std::string match = "> {";
+    fcheck_lines.insert(fcheck_lines.find(match)+4,"CHECK: %{{.*}} = tile.contract assign\n");
 
-//     HloModuleConfig cfg;
+    HloModuleConfig cfg;
 
-//     std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
-//       "module", cfg, false, false, nullptr);
+    std::unique_ptr<VerifiedHloModule> hlo_module = absl::make_unique<VerifiedHloModule>(
+      "module", cfg, false, false, nullptr);
 
-//     hlo_module->ParseHloStringAndVerifyModule(module_text); 
+    hlo_module->ParseHloStringAndVerifyModule(module_text); 
 
-//     CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
-//   }
-// }
+    CompileAndCheck(std::move(hlo_module), fcheck_lines, testcase_pairs);
+  }
+}
 
 TEST_P(PlaidMLShapeOperationTest, TransposeTest){
   VLOG(0) << "Testing generated examples";

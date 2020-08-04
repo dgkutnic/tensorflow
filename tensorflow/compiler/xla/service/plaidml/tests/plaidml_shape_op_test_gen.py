@@ -59,15 +59,20 @@ def getInputs(opname):
         cvals = [-1, 5, 0]
         tests = itertools.product(i_sizes, max_pads, modes, cvals)
         def opfunc(test):
-            padding = np.random.randint(test[1], size = (len(test[0]),2))
-            if test[2] == 'REFLECT':
-                padding = np.minimum(padding, np.expand_dims(np.array(test[0]),1) - 1)
-            elif test[2] == 'SYMMETRIC':
-                padding = np.minimum(padding, np.expand_dims(np.array(test[0]),1))
             I = tf.compat.v1.placeholder(tf.float32, test[0])
+
+            padding = np.random.randint(test[1], size = (len(test[0]),2))
             if np.all(padding==0):
                 padding[0][0] = 1
-            O = tf.pad(I, padding, test[2], test[3])
+            if test[2] == 'CONSTANT':
+                O = tf.pad(I, padding, "CONSTANT", test[3])
+            elif test[2] == 'REFLECT':
+                padding = np.minimum(padding, np.expand_dims(np.array(test[0]),1) - 1)
+                O = tf.pad(I, padding, "REFLECT", test[3])
+            elif test[2] == 'SYMMETRIC':
+                padding = np.minimum(padding, np.expand_dims(np.array(test[0]),1))
+                O = tf.pad(I, padding, "SYMMETRIC", test[3])
+
             with tf.compat.v1.Session() as sess:
                 i = np.random.uniform(size = test[0])
                 o = sess.run(O, feed_dict={
