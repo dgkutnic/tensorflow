@@ -492,9 +492,10 @@ void NVPTXBackendInit(const HloModuleConfig& hlo_module_config) {
 
 namespace nvptx {
 
-StatusOr<string> CompileToPtx(llvm::Module* module, GpuVersion gpu_version,
-                              const HloModuleConfig& hlo_module_config,
-                              const string& libdevice_dir_path) {
+StatusOr<string> CompileToPtx(
+    llvm::Module* module, GpuVersion gpu_version,
+    const HloModuleConfig& hlo_module_config, const string& libdevice_dir_path,
+    std::function<void(llvm::TargetMachine*)> configure_target) {
   static absl::once_flag backend_init_flag;
   absl::call_once(backend_init_flag, NVPTXBackendInit, hlo_module_config);
 
@@ -524,6 +525,11 @@ StatusOr<string> CompileToPtx(llvm::Module* module, GpuVersion gpu_version,
     // Construct LLVM TargetMachine for NVPTX.
     std::unique_ptr<llvm::TargetMachine> target_machine = NVPTXGetTargetMachine(
         default_target_triple, *compute_capability, hlo_module_config);
+
+    // Apply target machine configuration from call-back if available.
+    if (configure_target) {
+      configure_target(target_machine.get());
+    }
 
     // Link with libdevice, and optimize the LLVM module.
     TF_RETURN_IF_ERROR(LinkAndOptimizeModule(
@@ -624,8 +630,10 @@ StatusOr<std::vector<uint8>> EmitModuleToHsaco(
   // Locate lld.
   // TODO(whchung@gmail.com): change to tensorflow::ROCmRoot() after
   // ROCm-Device-Libs PR.
-  std::string lld_path = tensorflow::io::JoinPath("/opt/rocm", "hcc/bin");
-  auto lld_program = llvm::sys::findProgramByName("ld.lld", {lld_path});
+  std::string lld_path_1 = tensorflow::io::JoinPath("/opt/rocm", "hcc/bin");
+  std::string lld_path_2 = tensorflow::io::JoinPath("/opt/rocm", "llvm/bin");
+  auto lld_program =
+      llvm::sys::findProgramByName("ld.lld", {lld_path_1, lld_path_2});
   if (!lld_program) {
     return xla::InternalError("unable to find ld.lld in PATH: %s",
                               lld_program.getError().message());

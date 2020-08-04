@@ -191,8 +191,8 @@ class InputIterationTest(test.TestCase, parameterized.TestCase,
 
     input_iterator = iter(distribution.experimental_distribute_dataset(dataset))
 
-    with self.assertRaisesRegexp(NotImplementedError,
-                                 "does not support pure eager execution"):
+    with self.assertRaisesRegex(NotImplementedError,
+                                "does not support pure eager execution"):
       distribution.run(train_step, args=(next(input_iterator),))
 
   @combinations.generate(
@@ -536,6 +536,31 @@ class InputIterationTest(test.TestCase, parameterized.TestCase,
   @combinations.generate(
       combinations.combine(
           distribution=strategy_combinations.multidevice_strategies,
+          mode=["eager"]))
+  def testDynamicOutputsWithX64(self, distribution):
+    dataset = get_dataset_from_tensor_slices(
+        [5]).map(lambda x: math_ops.cast(x, dtypes.int64)).batch(2)
+    input_iterator = iter(distribution.experimental_distribute_dataset(dataset))
+
+    @def_function.function
+    def run(iterator):
+
+      def computation(x):
+        return math_ops.add(x, x)
+
+      inputs = next(iterator)
+      outputs = distribution.experimental_local_results(
+          distribution.run(computation, args=(inputs,)))
+      return outputs
+
+    # This assumes that there are exactly 2 replicas
+    result = run(input_iterator)
+    self.assertAllEqual([10], result[0])
+    self.assertAllEqual([], result[1])
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=strategy_combinations.multidevice_strategies,
           mode=["eager"]
       ))
   def testDynamicShapesWithGetNextOutsideFunction(self, distribution):
@@ -796,10 +821,6 @@ class InputIterationTest(test.TestCase, parameterized.TestCase,
           mode=["eager"]
       ))
   def testMultiDeviceDataCapturedFunction(self, distribution):
-    if getattr(distribution, "_enable_packed_variable_in_eager_mode", False):
-      self.skipTest(
-          "Dataset captured function doesn't support packed tensors yet "
-          "(b/145922293).")
     inputs = constant_op.constant([2., 3.])
     dataset = lambda _: dataset_ops.Dataset.from_tensor_slices(inputs).repeat(5)
     input_iterator = iter(
