@@ -188,7 +188,7 @@ tf_cc_test(
 
 tf_cc_test(
     name = "plaidml_i3d_test",
-    srcs = ["plaidml_i3d_test.cc", "i3d_pretrained_inputs_and_weights.h"],
+    srcs = ["plaidml_i3d_test.cc", "i3d_pretrained_inputs_and_weights.h", "i3d_output.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
@@ -285,6 +285,66 @@ tf_cc_test(
 tf_cc_test(
     name = "plaidml_resnext_stage1_test",
     srcs = ["plaidml_resnext_stage1_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_stage1_output.h"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core/platform:resource_loader",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
+    name = "plaidml_resnext_stage2_test",
+    srcs = ["plaidml_resnext_stage2_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_stage2_output.h"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core/platform:resource_loader",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
+    name = "plaidml_resnext_stage3_test",
+    srcs = ["plaidml_resnext_stage3_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_stage3_output.h"],
+    extra_copts = ["-fexceptions"],
+    deps = [
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/plaidml:compiler",
+        "//tensorflow/compiler/xla/service/plaidml/tests:plaidml_codegen_test",
+        "//tensorflow/compiler/xla/tests:test_utils",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core/platform:resource_loader",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tf_cc_test(
+    name = "plaidml_resnext_stage4_test",
+    srcs = ["plaidml_resnext_stage4_test.cc", "resnext50_pretrained_inputs_and_weights.h", "resnext50_stage4_output.h"],
     extra_copts = ["-fexceptions"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",

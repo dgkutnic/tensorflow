@@ -11,10 +11,10 @@ py_library(
     name = "numpy",
     srcs = [
         "__init__.py",
-        "np_accessor.py",
         "np_array_ops.py",
         "np_arrays.py",
         "np_dtypes.py",
+        "np_export.py",
         "np_math_ops.py",
         "np_random.py",
         "np_utils.py",
@@ -112,7 +112,7 @@ cuda_py_test(
     srcs = ["np_interop_test.py"],
     deps = [
         ":numpy",
-        "//tensorflow/python:platform",
-        "@absl_py//absl/testing:parameterized",
+        "//tensorflow:tensorflow_py",
+        "//third_party/py/numpy",
     ],
 )
