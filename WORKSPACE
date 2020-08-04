@@ -49,7 +49,6 @@ load("//third_party/toolchains/preconfig/generate:workspace.bzl",
 
 remote_config_workspace()
 
-
 # Use `swift_rules_dependencies` to fetch the toolchains. With the
 # `git_repository` rules above, the following call will skip redefining them.
 load("@build_bazel_rules_swift//swift:repositories.bzl", "swift_rules_dependencies")

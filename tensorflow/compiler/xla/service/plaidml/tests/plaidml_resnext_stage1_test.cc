@@ -99,85 +99,85 @@ class PlaidMLResNeXTOperationTest
 TEST_P(PlaidMLResNeXTOperationTest, SimpleResNeXT) {
 
   TestCaseVal ResNeXt50_WeightsInputs = {
-    {0},
+    {0}, // stage1_unit3_relu 
     ::weights::stage1_unit3_bn3_mean,
     ::weights::stage1_unit3_bn3_scale,
     ::weights::stage1_unit3_bn3_var,
-    {2e-05},
+    {2e-05}, // stage1_unit3_bn3/add
     ::weights::stage1_unit3_bn3_bias,
     ::weights::stage1_unit3_conv3_weight,
-    {0},
+    {0}, // stage1_unit3_relu2
     ::weights::stage1_unit3_bn2_mean,
     ::weights::stage1_unit3_bn2_scale,
     ::weights::stage1_unit3_bn2_var,
-    {2e-05},
+    {2e-05}, // stage1_unit3_bn2/add
     ::weights::stage1_unit3_bn2_bias,
     ::weights::stage1_unit3_conv2_weight,
-    {0},
+    {0}, // stage1_unit3_relu1
     ::weights::stage1_unit3_bn1_mean,
     ::weights::stage1_unit3_bn1_scale,
     ::weights::stage1_unit3_bn1_var,
-    {2e-05},
+    {2e-05}, // stage1_unit3_bn1/add
     ::weights::stage1_unit3_bn1_bias,
     ::weights::stage1_unit3_conv1_weight,
-    {0},
+    {0}, // stage1_unit2_relu
     ::weights::stage1_unit2_bn3_mean,
     ::weights::stage1_unit2_bn3_scale,
     ::weights::stage1_unit2_bn3_var,
-    {2e-05},
+    {2e-05}, // stage1_unit2_bn3/add
     ::weights::stage1_unit2_bn3_bias,
     ::weights::stage1_unit2_conv3_weight,
-    {0},
+    {0}, // stage1_unit2_relu2
     ::weights::stage1_unit2_bn2_mean,
     ::weights::stage1_unit2_bn2_scale,
     ::weights::stage1_unit2_bn2_var,
-    {2e-05},
+    {2e-05}, // stage1_unit2_bn2/add
     ::weights::stage1_unit2_bn2_bias,
     ::weights::stage1_unit2_conv2_weight,
-    {0},
+    {0}, // stage1_unit2_relu1
     ::weights::stage1_unit2_bn1_mean,
     ::weights::stage1_unit2_bn1_scale,
     ::weights::stage1_unit2_bn1_var,
-    {2e-05},
+    {2e-05}, // stage1_unit2_bn1/add
     ::weights::stage1_unit2_bn1_bias,
     ::weights::stage1_unit2_conv1_weight,
-    {0},
+    {0}, // stage1_unit1_relu
     ::weights::stage1_unit1_sc_bn_mean,
     ::weights::stage1_unit1_sc_bn_scale,
     ::weights::stage1_unit1_sc_bn_var,
-    {2e-05},
+    {2e-05}, // stage1_unit1_sc_bn/add
     ::weights::stage1_unit1_sc_bn_bias,
     ::weights::stage1_unit1_sc_weight,
-    {0},
+    {0}, // relu0
     ::weights::bn0_mean,
     ::weights::bn0_scale,
-    {2e-05},
+    {2e-05}, // bn0/add
     ::weights::bn0_var,
     ::weights::bn0_bias,
     ::weights::conv0_weight,
     ::weights::bn_data_mean,
     ::weights::bn_data_var,
-    {2e-05},
+    {2e-05}, // bn_data/add
     ::weights::bn_data_bias,
     ::weights::input_tensor,
     ::weights::stage1_unit1_bn3_mean,
     ::weights::stage1_unit1_bn3_scale,
     ::weights::stage1_unit1_bn3_var,
-    {2e-05},
+    {2e-05}, // stage1_unit1_bn3/add
     ::weights::stage1_unit1_bn3_bias,
     ::weights::stage1_unit1_conv3_weight,
-    {0},
+    {0}, // stage1_unit1_relu2
     ::weights::stage1_unit1_bn2_mean,
     ::weights::stage1_unit1_bn2_scale,
     ::weights::stage1_unit1_bn2_var,
-    {2e-05},
+    {2e-05}, // stage1_unit1_bn2/add
     ::weights::stage1_unit1_bn2_bias,
     ::weights::stage1_unit1_conv2_weight,
-    {0},
+    {0}, // stage1_unit1_relu1
     ::weights::stage1_unit1_bn1_mean,
     ::weights::stage1_unit1_bn1_scale,
     ::weights::stage1_unit1_bn1_var,
-    {2e-05},
+    {2e-05}, // stage1_unit1_bn1/add
     ::weights::stage1_unit1_bn1_bias,
     ::weights::stage1_unit1_conv1_weight
   };

@@ -131,6 +131,7 @@ cc_library(
         ":xla_kernel_creator",  # buildcleaner: keep
         "//tensorflow/compiler/jit/kernels:xla_ops",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
         "//tensorflow/compiler/xla/service:cpu_plugin",  # buildcleaner: keep
         "//tensorflow/core:core_cpu_internal",
@@ -151,6 +152,7 @@ cc_library(
         ":xla_kernel_creator",  # buildcleaner: keep
         "//tensorflow/compiler/jit/kernels:xla_ops",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
         "//tensorflow/compiler/xla/service:gpu_plugin",  # buildcleaner: keep
         "//tensorflow/core:core_cpu_internal",
@@ -208,6 +210,7 @@ XLA_DEVICE_DEPS = [
     "//tensorflow/compiler/tf2xla:common",
     "//tensorflow/compiler/tf2xla:tf2xla_util",
     "//tensorflow/compiler/tf2xla:xla_compiler",
+    "//tensorflow/compiler/tf2xla:xla_op_registry",
     "//tensorflow/compiler/tf2xla/kernels:xla_ops",
     "//tensorflow/compiler/xla:util",
     "//tensorflow/compiler/xla/client:client_library",
@@ -261,6 +264,8 @@ cc_library(
         "xla_device_context.h",
         "xla_device_ops.h",
     ],
+    # Public visibility is needed for external TF/XLA backends.
+    visibility = ["//visibility:public"],
     deps = XLA_DEVICE_DEPS,
 )
 
@@ -377,6 +382,7 @@ cc_library(
         "//tensorflow/compiler/mlir/tensorflow:compile_mlir_util_no_tf_dialect_passes",
         "//tensorflow/compiler/tf2xla:common",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_context",
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/compiler/xla:util",
         "//tensorflow/compiler/xla/client:client_library",
@@ -440,6 +446,7 @@ cc_library(
         ":compilation_passes",
         "//tensorflow/compiler/jit/kernels:xla_ops_no_jit_rewrite_registration",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
@@ -675,6 +682,7 @@ cc_library(
         "//tensorflow/compiler/tf2xla:side_effect_util",
         "//tensorflow/compiler/tf2xla:tf2xla_util",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/compiler/tf2xla/cc:xla_jit_ops",
         "//tensorflow/compiler/tf2xla/cc:xla_ops",
         "//tensorflow/compiler/xla:status_macros",
@@ -684,11 +692,11 @@ cc_library(
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
-        "//tensorflow/core:framework_bounds_check",
         "//tensorflow/core:graph",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core/framework:bounds_check",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/base",
@@ -713,11 +721,11 @@ cc_library(
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
-        "//tensorflow/core:framework_bounds_check",
         "//tensorflow/core:framework_internal",
         "//tensorflow/core:graph",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core/framework:bounds_check",
         "//tensorflow/stream_executor/lib",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -734,6 +742,7 @@ cc_library(
     hdrs = ["device_util.h"],
     deps = [
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/compiler/xla:status_macros",
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/core:framework",
@@ -949,6 +958,7 @@ cc_library(
         "//tensorflow/compiler/jit/graphcycles",
         "//tensorflow/compiler/tf2xla:resource_operation_table",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/compiler/tf2xla:xla_op_registry",
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/compiler/xla:util",
         "//tensorflow/core:core_cpu",
