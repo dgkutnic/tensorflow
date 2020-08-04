@@ -10,7 +10,7 @@ tf.compat.v1.disable_eager_execution()
 
 opsetname = 'shape'
 
-ops = ['broadcast', 'reshape', 'pad', 'slice']
+ops = ['broadcast', 'reshape', 'pad', 'slice', 'transpose']
 
 def getInputs(opname):
     if opname == 'broadcast':
@@ -99,7 +99,24 @@ def getInputs(opname):
             return [i], [o]
         
         return tests, opfunc
-                
+    elif opname == 'transpose':
+        # Input shape, perm
+        tests = [[[3, 1, 2], [1, 0, 2]],
+                 [[3, 1, 3], []]]
+        def opfunc(test):
+            I = tf.compat.v1.placeholder(tf.float32, test[0])
+            if len(test[1])>0:
+                O = tf.transpose(I, test[1])
+            else:
+                O = tf.transpose(I)
+            with tf.compat.v1.Session() as sess:
+                i = np.random.uniform(size = test[0])
+                o = sess.run(O, feed_dict={
+                    I: i
+                })
+            return [i], [o]
+        
+        return tests, opfunc        
     pass
 
 def ary2str(A):

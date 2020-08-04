@@ -675,8 +675,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
         }
         case HloOpcode::kTranspose: {
           // Tensor transpose operation
-          // TODO: test correctness, see if the axes operand is needed
-          auto op = plaidml_op::transpose(instr_map[operand_ids[0]]);
+          auto dims = instruction->dimensions();
+          std::vector<Value> pattern;
+          for(int64_t d:dims){
+            pattern.push_back(Value(d));
+          }
+          auto op = plaidml_op::transpose(instr_map[operand_ids[0]], Value(pattern));
           instr_map.insert(std::make_pair(cur_instr_id, op));
           break;
         }
