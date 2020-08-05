@@ -454,10 +454,12 @@ StatusOr<std::unique_ptr<Program>> PlaidMLCompiler::ProgramFromHloModule (
           // Operand 2: beta
           // Epsilon and Feature Index operands must be accessed by calling the epsilon() and feature_index() functions
           int64_t feature_index = instruction->feature_index();
+          VLOG(2) << "Feature index " << feature_index;
           Value findex = Value{feature_index};
           float e = instruction->epsilon();
-          auto batch_mean = plaidml_op::mean(instr_map[operand_ids[0]], findex);
-          auto batch_variance = plaidml_op::variance(instr_map[operand_ids[0]], findex);
+          VLOG(2) << "Epsilon " << e;
+          auto batch_mean = plaidml_op::mean(instr_map[operand_ids[0]], findex, true);
+          auto batch_variance = plaidml_op::variance(instr_map[operand_ids[0]], findex, true);
           auto batch_norm_denom = ::plaidml::edsl::sqrt(batch_variance + e);
           auto batch_norm = ((instr_map[operand_ids[0]] - batch_mean) * instr_map[operand_ids[1]] / batch_norm_denom) + instr_map[operand_ids[2]];
           auto tup = ::plaidml::edsl::make_tuple(batch_norm, batch_mean, batch_variance);
