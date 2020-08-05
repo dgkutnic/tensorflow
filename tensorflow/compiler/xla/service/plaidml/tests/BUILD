@@ -1,5 +1,6 @@
 load("//tensorflow:tensorflow.bzl", "tf_cc_test", "tf_copts")
 
+
 cc_library(
     name = "plaidml_codegen_test",
     testonly = True,
@@ -138,19 +139,30 @@ tf_cc_test(
     ],
 )
 
-genrule(
+py_binary(
     name = "plaidml_shape_op_test_gen",
-    srcs = [],
+    srcs = [
+        "plaidml_shape_op_test_gen.py"
+    ],
+    python_version = "PY3",
+    srcs_version = "PY2AND3",
+    deps = [
+        "//tensorflow:tensorflow_py"
+    ],
+)
+
+genrule(
+    name = "plaidml_shape_op_test_genrule",
     outs = ["plaidml_shape_op_test.h.inc"],
-    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" python tensorflow/compiler/xla/service/plaidml/tests/plaidml_shape_op_test_gen.py && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_shape_op_test.h.inc \"$@\"",
-    tools = ["plaidml_shape_op_test_gen.py"]
+    cmd = "XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" $(location :plaidml_shape_op_test_gen) $@",
+    tools = [":plaidml_shape_op_test_gen"]
 )
 
 tf_cc_test(
     name = "plaidml_shape_op_test",
     srcs = ["plaidml_shape_op_test.cc", "plaidml_shape_op_test.h.inc"],
     extra_copts = ["-fexceptions"],
-    data = [":plaidml_shape_op_test_gen"],
+    data = [":plaidml_shape_op_test_genrule"],
     deps = [
         "//tensorflow/compiler/xla/service:hlo",
         "//tensorflow/compiler/xla/service/plaidml:compiler",
