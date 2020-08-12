@@ -95,211 +95,211 @@ class PlaidMLI3DOperationTest
 TEST_P(PlaidMLI3DOperationTest, SimpleI3D) {
   std::vector<float> input_tensor(4816896, 1.0);
   TestCaseVal I3D_WeightsInputs = {
-    ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Logits/AvgPool3D
-    {0}, // RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Conv3d_2c_3x3/Relu
-    ::weights::RGB_inception_i3d_Conv3d_2c_3x3_conv_3d_w, //
+    ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_w, // %arg0
+    {98}, // %arg1: RGB/inception_i3d/Logits/AvgPool3D
+    {0}, // %arg2: RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg3
+    {0}, // %arg4: RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg5
+    {0}, // %arg6: RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg7
+    {0}, // %arg8: RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg9
+    {0}, // %arg10: RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg11
+    {0}, // %arg12: RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg13
+    {0}, // %arg14: RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg15
+    {0}, // %arg16: RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg17
+    {0}, // %arg18: RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_conv_3d_w, // %arg19
+    {0}, // %arg20: RGB/inception_i3d/Conv3d_2c_3x3/Relu
+    ::weights::RGB_inception_i3d_Conv3d_2c_3x3_conv_3d_w, // %arg21
     {0}, // RGB/inception_i3d/Conv3d_2b_1x1/Relu
-    ::weights::RGB_inception_i3d_Conv3d_2b_1x1_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Conv3d_1a_7x7/Relu
-    ::weights::RGB_inception_i3d_Conv3d_1a_7x7_conv_3d_w, //
-    input_tensor, //
-    {0.001}, // RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Conv3d_1a_7x7_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Conv3d_2b_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Conv3d_2c_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
+    ::weights::RGB_inception_i3d_Conv3d_2b_1x1_conv_3d_w, // %arg23
+    {0}, // %arg24: RGB/inception_i3d/Conv3d_1a_7x7/Relu
+    ::weights::RGB_inception_i3d_Conv3d_1a_7x7_conv_3d_w, // %arg25
+    input_tensor, // %arg26
+    {0.001}, // %arg27: RGB/inception_i3d/Conv3d_1a_7x7/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Conv3d_1a_7x7_batch_norm_beta, // %arg28
+    {0.001}, // %arg29: RGB/inception_i3d/Conv3d_2b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Conv3d_2b_1x1_batch_norm_beta, // %arg30
+    {0.001}, // %arg31: RGB/inception_i3d/Conv3d_2c_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Conv3d_2c_3x3_batch_norm_beta, // %arg32
+    {0.001}, // %arg33: RGB/inception_i3d/Mixed_3b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg34
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg35
+    {0.001}, // %arg36: RGB/inception_i3d/Mixed_3b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg37
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg38
+    {0}, // %arg39: RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg40
+    {0.001}, // %arg41: RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg42
+    {0.001}, // %arg43: RGB/inception_i3d/Mixed_3b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg44
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg45
+    {0}, // %arg46: RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg47
+    {0.001}, // %arg48: RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg49
+    {0.001}, // %arg50: RGB/inception_i3d/Mixed_3b/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg51
+    {0.001}, // %arg52: RGB/inception_i3d/Mixed_3c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg53
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg54
+    {0.001}, // %arg55: RGB/inception_i3d/Mixed_3c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg56
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg57
+    {0}, // %arg58: RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg59
     {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg61
     {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_conv_3d_w, //
-    {0}, // RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/Relu
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_conv_3d_w, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, //
-    {0.001}, // RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
-    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, //
-    ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_b //
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg63
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg64
+    {0}, // %arg65: RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg66
+    {0.001}, // %arg67: RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg68
+    {0.001}, // %arg69: RGB/inception_i3d/Mixed_3c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_3c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg70
+    {0.001}, // %arg71: RGB/inception_i3d/Mixed_4b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg72
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg73
+    {0.001}, // %arg74: RGB/inception_i3d/Mixed_4b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg75
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg76
+    {0}, // %arg77: RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg78
+    {0.001}, // %arg79: RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg80
+    {0.001}, // %arg81: RGB/inception_i3d/Mixed_4b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg82
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg83
+    {0}, // %arg84: RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg85
+    {0.001}, // %arg86: RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg87
+    {0.001}, // %arg88: RGB/inception_i3d/Mixed_4b/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4b_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg89
+    {0.001}, // %arg90: RGB/inception_i3d/Mixed_4c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg91
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg92
+    {0.001}, // %arg93: RGB/inception_i3d/Mixed_4c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg94
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg95
+    {0}, // %arg96: RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg97
+    {0.001}, // %arg98: RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg99
+    {0.001}, // %arg100 RGB/inception_i3d/Mixed_4c/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg101
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg102
+    {0}, // %arg103: RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg104
+    {0.001}, // %arg105: RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg106
+    {0.001}, // %arg107: RGB/inception_i3d/Mixed_4c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg108
+    {0.001}, // %arg109: RGB/inception_i3d/Mixed_4d/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg110
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg111
+    {0.001}, // %arg112: RGB/inception_i3d/Mixed_4d/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg113
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg114
+    {0}, // %arg115: RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg116
+    {0.001}, // %arg117: RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg118
+    {0.001}, // %arg119: RGB/inception_i3d/Mixed_4d/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg120
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg121
+    {0}, // %arg122: RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg123
+    {0.001}, // %arg124: RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg125
+    {0.001}, // %arg126: RGB/inception_i3d/Mixed_4d/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4d_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg127
+    {0.001}, // %arg128: RGB/inception_i3d/Mixed_4e/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg129
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg130
+    {0.001}, // %arg131: RGB/inception_i3d/Mixed_4e/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg132
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg133
+    {0}, // %arg134: RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg135
+    {0.001}, // %arg136: RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg137
+    {0.001}, // %arg138: RGB/inception_i3d/Mixed_4e/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg139
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg140
+    {0}, // %arg141: RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg142
+    {0.001}, // %arg143: RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg144
+    {0.001}, // %arg145: RGB/inception_i3d/Mixed_4e/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4e_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg146
+    {0.001}, // %arg147: RGB/inception_i3d/Mixed_4f/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg148
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg149
+    {0.001}, // %arg150: RGB/inception_i3d/Mixed_4f/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg151
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg152
+    {0}, // %arg153: RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg154
+    {0.001}, // %arg155: RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg156
+    {0.001}, // %arg157: RGB/inception_i3d/Mixed_4f/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg158
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg159
+    {0}, // %arg160: RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg161
+    {0.001}, // %arg162: RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg163
+    {0.001}, // %arg164: RGB/inception_i3d/Mixed_4f/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_4f_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg165
+    {0.001}, // %arg166: RGB/inception_i3d/Mixed_5b/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg167
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg168
+    {0.001}, // %arg169: RGB/inception_i3d/Mixed_5b/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg170
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg171
+    {0}, // %arg172: RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg173
+    {0.001}, // %arg174: RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg175
+    {0.001}, // %arg176: RGB/inception_i3d/Mixed_5b/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg177
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_conv_3d_w, // %arg178
+    {0}, // %arg179: RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg180
+    {0.001}, // %arg181: RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg183
+    {0.001}, // %arg183: RGB/inception_i3d/Mixed_5b/Branch_2/Conv3d_0a_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5b_Branch_2_Conv3d_0a_3x3_batch_norm_beta, // %arg184
+    {0.001}, // %arg185: RGB/inception_i3d/Mixed_5c/Branch_3/Conv3d_0b_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_3_Conv3d_0b_1x1_batch_norm_beta, // %arg186
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_conv_3d_w, // %arg187
+    {0.001}, // %arg188: RGB/inception_i3d/Mixed_5c/Branch_0/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_0_Conv3d_0a_1x1_batch_norm_beta, // %arg189
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_conv_3d_w, // %arg190
+    {0}, // %arg191: RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_conv_3d_w, // %arg192
+    {0.001}, // %arg193: RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0a_1x1_batch_norm_beta, // %arg194
+    {0.001}, // %arg195: RGB/inception_i3d/Mixed_5c/Branch_1/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_1_Conv3d_0b_3x3_batch_norm_beta, // %arg196
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_conv_3d_w, // %arg197
+    {0}, // %arg198: RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/Relu
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_conv_3d_w, // %arg199
+    {0.001}, // %arg200: RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0a_1x1/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0a_1x1_batch_norm_beta, // %arg201
+    {0.001}, // %arg202: RGB/inception_i3d/Mixed_5c/Branch_2/Conv3d_0b_3x3/batch_norm/batch_norm/add
+    ::weights::RGB_inception_i3d_Mixed_5c_Branch_2_Conv3d_0b_3x3_batch_norm_beta, // %arg203
+    ::weights::RGB_inception_i3d_Logits_Conv3d_0c_1x1_conv_3d_b // %arg204
   };
 
   TestCaseVal I3D_Output = ::outputs::I3D_Output;
