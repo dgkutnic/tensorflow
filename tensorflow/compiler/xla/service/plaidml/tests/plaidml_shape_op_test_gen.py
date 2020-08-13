@@ -1,7 +1,10 @@
+import os
+
+os.system('python configure.py')
+
 import glob
 import itertools
 import numpy as np
-import os
 import shutil
 import tensorflow as tf
 import time
