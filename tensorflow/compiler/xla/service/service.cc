@@ -836,25 +836,25 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
   TF_ASSIGN_OR_RETURN(std::unique_ptr<HloModule> module,
                       CreateModuleFromProto(module_proto, *module_config));
 
+  // VLOG(1) << "Dumping HLO Module";
+  // DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
+  // VLOG(1) << "Finish dumping HLO Module";
+
+  // VLOG(1) << "Creating the PlaidML compiler";
+  // // add plaidml executable here
+  // plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
+
+  // TF_ASSIGN_OR_RETURN(std::unique_ptr<Executable> executable, pmlc->RunBackend(std::move(module), executor, device_allocator));
+
+  // //auto e = pmlc->RunBackend(std::move(module), executor, device_allocator);
+
+  // VLOG(1) << "Finish creating the PlaidML Compiler";
+
   VLOG(1) << "Dumping HLO Module";
   DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
   VLOG(1) << "Finish dumping HLO Module";
 
-  VLOG(1) << "Creating the PlaidML compiler";
-  // add plaidml executable here
-  plaidml::PlaidMLCompiler* pmlc = new plaidml::PlaidMLCompiler();
-
-  TF_ASSIGN_OR_RETURN(std::unique_ptr<Executable> executable, pmlc->RunBackend(std::move(module), executor, device_allocator));
-
-  //auto e = pmlc->RunBackend(std::move(module), executor, device_allocator);
-
-  VLOG(1) << "Finish creating the PlaidML Compiler";
-
-  //VLOG(1) << "Dumping HLO Module";
-  //DumpHloModuleIfEnabled(*module, kBeforeOptimizationsDumpName);
-  //VLOG(1) << "Finish dumping HLO Module";
-
-  /*
+  
   TF_ASSIGN_OR_RETURN(
       module, backend->compiler()->RunHloPasses(std::move(module), executor,
                                                 device_allocator));
@@ -862,9 +862,8 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
   TF_ASSIGN_OR_RETURN(std::unique_ptr<Executable> executable,
                       backend->compiler()->RunBackend(
                           std::move(module), executor, device_allocator));
-  */
+  
 
-  /*
   const auto& debug_opts = module_config->debug_options();
   if (DumpingEnabledForHloModule(module_proto.name(), debug_opts) &&
       debug_opts.xla_dump_hlo_snapshots()) {
@@ -872,7 +871,6 @@ StatusOr<std::unique_ptr<Executable>> Service::BuildExecutable(
     *hlo_proto->mutable_hlo_module() = module_proto;
     executable->set_hlo_proto(std::move(hlo_proto));
   }
-  */
 
   return std::move(executable);
 }

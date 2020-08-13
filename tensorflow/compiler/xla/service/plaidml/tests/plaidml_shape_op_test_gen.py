@@ -10,27 +10,21 @@ tf.compat.v1.disable_eager_execution()
 
 opsetname = 'shape'
 
-ops = ['broadcast'] # , 'reshape', 'pad', 'slice', 'transpose'
+ops = ['reshape', 'pad', 'slice', 'transpose', 'broadcast']
 
 def getInputs(opname):
     if opname == 'broadcast':
         # Input shape, output shape
-        tests = [[[1, 3], [3, 3]]]#,
-                 #[[5, 1, 2], [5, 3, 2]]]
+        tests = [[[1, 3], [3, 3]],
+                 [[5, 1, 2], [5, 3, 2]]]
         def opfunc(test):
-            print("Ping 1")
             I = tf.compat.v1.placeholder(tf.float32, test[0])
-            print("Ping 2")
             O = tf.broadcast_to(I, test[1])
-            print("Ping 3")
             with tf.compat.v1.Session() as sess:
-                print("Ping 4")
                 i = np.random.uniform(size = test[0])
-                print("Ping 5")
                 o = sess.run(O, feed_dict={
                     I: i
                 })
-                print("Ping 6")
             return [i], [o]
         
         return tests, opfunc
@@ -140,7 +134,6 @@ def ary2str(A):
 fstr = ''
 
 for opname in ops:
-    print("OPNAME", opname)
     tests, opfunc = getInputs(opname)
 
     desstr = 'std::vector<std::string> ' + opname + '_descriptions = {'
@@ -149,9 +142,7 @@ for opname in ops:
     modstr = '\nstd::vector<std::string> ' + opname + '_modules = {'
 
     for test in tests:
-        print("TEST: ", test)
         inputs, outputs = opfunc(test)
-        print("OUTPUT: ", outputs[0])
         
         desstr += '\n\"'
         for ti in test:
@@ -170,8 +161,8 @@ for opname in ops:
         modfile.close()
         modstr += '\nR\"#('+ module + ')#\",'
 
-        # remdir = 'tensorflow/compiler/xla/service/plaidml/tests/hlo_module/'
-        # shutil.rmtree(remdir)
+        remdir = 'tensorflow/compiler/xla/service/plaidml/tests/hlo_module/'
+        shutil.rmtree(remdir)
 
     #Format & save header file
     istr = istr[:-1] + '};\n'
