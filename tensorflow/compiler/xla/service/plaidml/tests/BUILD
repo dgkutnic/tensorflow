@@ -155,7 +155,7 @@ genrule(
     name = "plaidml_shape_op_test_genrule",
     srcs = ["//:configure"],
     outs = ["plaidml_shape_op_test.h.inc"],
-    cmd = "./configure && pwd && XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" $(location :plaidml_shape_op_test_gen) && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_shape_op_test.h.inc $@",
+    cmd = "./configure && XLA_FLAGS=\"--xla_dump_to=tensorflow/compiler/xla/service/plaidml/tests/hlo_module\" TF_XLA_FLAGS=\"--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit --tf_xla_min_cluster_size=0\" $(location :plaidml_shape_op_test_gen) && mv tensorflow/compiler/xla/service/plaidml/tests/plaidml_shape_op_test.h.inc $@",
     tools = [":plaidml_shape_op_test_gen"]
 )
 
