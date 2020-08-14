@@ -1,7 +1,3 @@
-import os
-
-os.system('python configure.py')
-
 import glob
 import itertools
 import numpy as np
