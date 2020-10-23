@@ -77,7 +77,7 @@ class HloPrintOptions {
   // Constructs the default print options: don't print large constants, don't
   // compact operands, no indentation.
   HloPrintOptions()
-      : print_large_constants_(false),
+      : print_large_constants_(true),
         print_subcomputation_mode_(PrintSubcomputationMode::kNameOnly),
         print_metadata_(true),
         print_backend_config_(true),

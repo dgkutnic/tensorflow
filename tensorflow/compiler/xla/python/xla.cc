@@ -119,7 +119,7 @@ StatusOr<std::string> GetComputationHloText(const XlaComputation& computation) {
                       GetHloModule(computation));
   HloPrintOptions options;
   options = HloPrintOptions::ShortParsable();
-  options.set_print_large_constants(false);
+  options.set_print_large_constants(true);
   return hlo_module->ToString(options);
 }
 
