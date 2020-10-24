@@ -74,7 +74,7 @@ class HloPrintOptions {
     kFullBodies,  // Print the full bodies of subcomputations.
   };
 
-  // Constructs the default print options: don't print large constants, don't
+  // Constructs the default print options: print large constants, don't
   // compact operands, no indentation.
   HloPrintOptions()
       : print_large_constants_(true),
@@ -112,6 +112,7 @@ class HloPrintOptions {
   // computation graph.
   static HloPrintOptions Canonical() {
     return HloPrintOptions()
+	.set_print_large_constants(true)
         .set_print_subcomputation_mode(PrintSubcomputationMode::kFullBodies)
         .set_print_metadata(false)
         .set_print_backend_config(false)
@@ -127,6 +128,7 @@ class HloPrintOptions {
   // Options to produce a fingerprint of an HLO.
   static HloPrintOptions Fingerprint() {
     return HloPrintOptions()
+	.set_print_large_constants(true)
         .set_print_subcomputation_mode(PrintSubcomputationMode::kFullBodies)
         .set_print_metadata(false)
         .set_print_backend_config(false)
